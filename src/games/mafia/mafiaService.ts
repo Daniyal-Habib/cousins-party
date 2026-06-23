@@ -9,6 +9,7 @@ import {
   runTransaction,
   arrayUnion,
   increment,
+  FieldPath,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
@@ -79,10 +80,12 @@ export function subscribeMafia(
 /** Mafia member submits their night kill vote. */
 export async function submitMafiaVote(code: string, uid: string, targetUid: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
-    [`nightActions.mafiaVotes.${uid}`]: targetUid,
-    updatedAt: serverTimestamp(),
-  });
+  // Use FieldPath to avoid dots in email UIDs being interpreted as nested path separators.
+  await updateDoc(
+    doc(db, "rooms", code, "games", "mafia"),
+    new FieldPath("nightActions", "mafiaVotes", uid), targetUid,
+    "updatedAt", serverTimestamp(),
+  );
 }
 
 /** Doctor submits their night save target. */
@@ -116,10 +119,12 @@ export async function submitSheriffShot(code: string, targetUid: string) {
 /** Player submits a day vote (target uid or "skip"). */
 export async function submitDayVote(code: string, voterUid: string, target: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
-    [`dayVotes.${voterUid}`]: target,
-    updatedAt: serverTimestamp(),
-  });
+  // Use FieldPath to avoid dots in email UIDs being interpreted as nested path separators.
+  await updateDoc(
+    doc(db, "rooms", code, "games", "mafia"),
+    new FieldPath("dayVotes", voterUid), target,
+    "updatedAt", serverTimestamp(),
+  );
 }
 
 /** Acknowledge role reveal so the host can advance to night. */
