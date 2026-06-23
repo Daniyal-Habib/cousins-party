@@ -63,7 +63,7 @@ export function subscribeMafia(
   cb: (state: MafiaGameState | null, pendingWrites: boolean) => void,
 ): () => void {
   if (!db) {
-    cb(null);
+    cb(null, false);
     return () => {};
   }
   return onSnapshot(doc(db, "rooms", code, "games", "mafia"), (snap) => {
