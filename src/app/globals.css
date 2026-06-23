@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   GTA 6 — Vice City theme tokens
+   ============================================================ */
+:root {
+  --background: #0B0420;
+  --foreground: #F5F3FF;
+  /* CSS vars consumed by Tailwind fontFamily display/body above */
+  --font-display: "Audiowide", "Trebuchet MS", sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-body);
+  /* Prevent pull-to-refresh / rubber-banding interfering with in-app drag gestures */
+  overscroll-behavior: none;
+}
+
+/* Mobile-first portrait container: centers a phone-width column on larger screens */
+.app-shell {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(168, 85, 247, 0.25), transparent 60%),
+    radial-gradient(100% 50% at 50% 100%, rgba(255, 45, 123, 0.18), transparent 60%),
+    var(--background);
+}
+
+@layer components {
+  /* Frosted-glass panel */
+  .glass {
+    @apply rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Neon glowing text for headers */
+  .neon-text {
+    text-shadow:
+      0 0 8px rgba(255, 45, 123, 0.8),
+      0 0 20px rgba(255, 45, 123, 0.5);
+  }
+  .neon-text-teal {
+    text-shadow:
+      0 0 8px rgba(31, 224, 216, 0.8),
+      0 0 20px rgba(31, 224, 216, 0.5);
+  }
+
+  /* Animated gradient title bar */
+  .gradient-title {
+    background: linear-gradient(135deg, #FF2D7B, #FF7A3C, #1FE0D8, #FF2D7B);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-pan 6s ease infinite;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
