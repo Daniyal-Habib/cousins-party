@@ -54,9 +54,6 @@ export function DayScreen() {
         <TabBtn active={tab === "chat"} onClick={() => setTab("chat")}>
           Discuss
         </TabBtn>
-        <div className="ml-auto self-center text-xs text-muted">
-          {Object.keys(state.dayVotes || {}).length}/{state.players.filter((p) => p.alive).length} voted
-        </div>
       </div>
 
       {tab === "vote" ? (
@@ -78,6 +75,7 @@ export function DayScreen() {
                 onSelect={castVote}
                 selfUid={me.uid}
                 emptyHint="Nobody left to vote against."
+                votedUids={Object.keys(state.dayVotes || {})}
               />
               <NeonButton
                 variant="ghost"

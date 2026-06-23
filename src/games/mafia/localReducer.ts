@@ -164,11 +164,11 @@ export function localMafiaReducer(
 
       if (state.pendingTie) {
         narration = "The vote was tied — nobody is eliminated.";
-      } else if (eliminatedUid) {
+      } else if (eliminatedUid && eliminatedUid !== "skip") {
         const victim = players.find((p) => p.uid === eliminatedUid);
         narration = `The town voted out ${state.players.find((p) => p.uid === eliminatedUid)?.name} (${victim?.role}).`;
       } else {
-        narration = "The town chose to skip the vote.";
+        narration = "The town decided to skip.";
       }
 
       const win = checkWin(players, eliminatedUid);

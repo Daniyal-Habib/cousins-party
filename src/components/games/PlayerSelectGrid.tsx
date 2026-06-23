@@ -29,6 +29,7 @@ export function PlayerSelectGrid({
   selfSelectable?: boolean;
   selfUid?: string;
   emptyHint?: string;
+  votedUids?: string[];
 }) {
   const selectable = players.filter(
     (p) => p.alive && !excludeUids.includes(p.uid) && (selfSelectable || p.uid !== selfUid),
@@ -54,11 +55,18 @@ export function PlayerSelectGrid({
             disabled={disabled}
             onClick={() => onSelect(p.uid)}
             className={cn(
-              "glass flex flex-col items-center gap-1.5 p-3 transition",
+              "relative glass flex flex-col items-center gap-1.5 p-3 transition",
               selected && "border-neon-pink shadow-neon-pink",
               disabled && "opacity-30 grayscale",
             )}
           >
+            {votedUids?.includes(p.uid) && (
+              <div className="absolute top-2 right-2 rounded-full bg-neon-teal p-0.5 text-black">
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
             <Avatar
               name={p.name}
               photoUrl={p.photoUrl}

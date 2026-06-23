@@ -84,14 +84,14 @@ export function DayResultsScreen() {
             It&apos;s a tie at the top! Nobody is eliminated.
           </Story>
         )}
-        {!day?.tied && day?.eliminated && (
+        {!day?.tied && day?.eliminated && day.eliminated !== "skip" && (
           <Story color="pink">
             The town voted out{" "}
             <AvatarName player={byUid(day.eliminated)} />.
           </Story>
         )}
-        {!day?.eliminated && !day?.tied && (
-          <Story color="teal">The town chose to skip. Nobody was eliminated.</Story>
+        {(!day?.eliminated || day?.eliminated === "skip") && !day?.tied && (
+          <Story color="teal">The town decided to skip. Nobody was eliminated.</Story>
         )}
 
         {/* Vote tally */}

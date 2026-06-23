@@ -105,7 +105,9 @@ function MafiaNight() {
         <GlassPanel glow="pink" className="text-center">
           <p className="font-display uppercase text-ink">Vote locked</p>
           <p className="mt-1 text-sm text-muted">
-            Waiting for the rest of the Mafia to agree…
+            {teammates.length > 0
+              ? "Waiting for the rest of the Mafia to agree…"
+              : "Waiting for other roles to finish…"}
           </p>
         </GlassPanel>
       )}
@@ -124,21 +126,23 @@ function MafiaNight() {
       )}
 
       {/* Private Mafia chat — gated by security rules from non-mafia */}
-      <div className="mt-4">
-        <p className="mb-1 px-1 font-display text-[11px] uppercase tracking-[0.3em] text-muted">
-          Mafia Chat · secret
-        </p>
-        <div className="glass h-48 overflow-hidden">
-          <ChatPanel
-            code={code}
-            subcollection="mafiaChat"
-            author={{ uid: me!.uid, name: me!.name, photo: me!.photoUrl }}
-            placeholder="Plot in secret…"
-            accent="pink"
-            compact
-          />
+      {teammates.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-1 px-1 font-display text-[11px] uppercase tracking-[0.3em] text-muted">
+            Mafia Chat · secret
+          </p>
+          <div className="glass h-48 overflow-hidden">
+            <ChatPanel
+              code={code}
+              subcollection="mafiaChat"
+              author={{ uid: me!.uid, name: me!.name, photo: me!.photoUrl }}
+              placeholder="Plot in secret…"
+              accent="pink"
+              compact
+            />
+          </div>
         </div>
-      </div>
+      )}
     </PhaseShell>
   );
 }
