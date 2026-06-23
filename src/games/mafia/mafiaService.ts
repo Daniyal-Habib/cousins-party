@@ -14,6 +14,7 @@ import { db } from "@/lib/firebase";
 import {
   defaultComposition,
   assignRoles,
+  type RoleComposition,
 } from "./setup";
 import {
   resolveNight,
@@ -38,7 +39,7 @@ export async function startMafiaGame(
   code: string,
   hostUid: string,
   roomPlayers: RoomPlayer[],
-  compositionOverride?: any,
+  compositionOverride?: RoleComposition,
 ): Promise<void> {
   if (!db) throw new Error("Firestore not configured");
   const living = roomPlayers.filter((p) => !p.isSpectator);

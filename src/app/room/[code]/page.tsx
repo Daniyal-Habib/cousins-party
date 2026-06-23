@@ -13,6 +13,7 @@ import { useUser } from "@/lib/hooks/useUser";
 import { useRoom } from "@/lib/hooks/useRoom";
 import { kickPlayer, leaveRoom } from "@/lib/rooms/roomService";
 import type { GameType } from "@/lib/types";
+import type { RoleComposition } from "@/games/mafia/setup";
 
 const GAME_NAME: Record<GameType, string> = {
   mafia: "Mafia",
@@ -65,7 +66,7 @@ export default function RoomPage() {
     }
   }
 
-  async function confirmStart(composition: any) {
+  async function confirmStart(composition: RoleComposition) {
     if (!uid || !room) return;
     if (room.gameType === "mafia") {
       const { startMafiaGame } = await import("@/games/mafia/mafiaService");
@@ -311,7 +312,7 @@ function SettingsModal({
 }: {
   playerCount: number;
   onClose: () => void;
-  onConfirm: (comp: any) => void;
+  onConfirm: (comp: RoleComposition) => void;
 }) {
   const [mafia, setMafia] = useState(playerCount >= 9 ? 3 : playerCount >= 6 ? 2 : 1);
   const [doctor, setDoctor] = useState(1);

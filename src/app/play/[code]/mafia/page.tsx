@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { GradientBackdrop } from "@/components/theme/GradientBackdrop";
-import { NeonButton } from "@/components/theme/NeonButton";
 import { MafiaProvider } from "@/games/mafia/useMafia";
 import { MafiaGame } from "@/components/games/mafia/MafiaGame";
 import { subscribeMafia } from "@/games/mafia/mafiaService";
 import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { useUser } from "@/lib/hooks/useUser";
-import { useRoom } from "@/lib/hooks/useRoom";
+
 import type { MafiaGameState } from "@/games/mafia/state";
 
 /**
@@ -25,10 +24,8 @@ export default function PlayMafiaPage() {
 function PlayMafiaInner() {
   const params = useParams<{ code: string }>();
   const code = params.code;
-  const router = useRouter();
   const { profile } = useUser();
   const uid = profile?.email ?? null;
-  const { room, players } = useRoom(code, uid, profile);
 
   const [gameState, setGameState] = useState<MafiaGameState | null | undefined>(undefined);
 

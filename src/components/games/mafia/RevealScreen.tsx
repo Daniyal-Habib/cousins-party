@@ -4,11 +4,11 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlassPanel } from "@/components/theme/GlassPanel";
 import { NeonButton } from "@/components/theme/NeonButton";
-import { Avatar } from "@/components/theme/Avatar";
+
 import { RoleRevealCard } from "@/components/role-reveal/RoleRevealCard";
 import { useMafia, ROLE_META } from "@/games/mafia/useMafia";
 import { acknowledgeReveal, endRevealPhase } from "@/games/mafia/mafiaService";
-import { cn } from "@/lib/cn";
+
 
 /**
  * Online reveal phase: each client reveals their own role on-device, then
