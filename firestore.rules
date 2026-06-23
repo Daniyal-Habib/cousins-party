@@ -34,7 +34,7 @@ service cloud.firestore {
 
       // The authoritative game doc. Anyone in the room may read.
       // Host writes phase transitions; players write their own action fields.
-      match /game/{document=**} {
+      match /games/{document=**} {
         allow read: if true;
         allow write: if true; // tighten: host-only for phase writes
       }
