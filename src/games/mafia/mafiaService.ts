@@ -193,9 +193,11 @@ export async function resolveNightPhase(code: string): Promise<void> {
     }
 
     const newPlayers = applyDeaths(state.players, result.killed, extraDeaths);
+    // Strip undefined values — Firestore SDK rejects writes containing undefined.
+    const nightRecord = JSON.parse(JSON.stringify({ ...result, extraDeaths }));
     tx.update(doc(database, "rooms", code, "games", "mafia"), {
       players: newPlayers,
-      lastNight: { ...result, extraDeaths },
+      lastNight: nightRecord,
       phase: "night-results",
       updatedAt: serverTimestamp(),
     });
@@ -286,12 +288,13 @@ export async function startNextNight(code: string): Promise<void> {
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "day-results") return;
 
+    const prevSave = state.lastNight?.savedByDoctor ?? null;
     tx.update(doc(database, "rooms", code, "games", "mafia"), {
       phase: "night",
       round: state.round + 1,
       nightActions: {
         mafiaVotes: {},
-        previousDoctorSave: state.lastNight?.savedByDoctor,
+        ...(prevSave ? { previousDoctorSave: prevSave } : {}),
       },
       updatedAt: serverTimestamp(),
     });
