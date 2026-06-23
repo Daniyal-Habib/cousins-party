@@ -40,8 +40,10 @@ export function EndScreen() {
 
   async function backToRoom() {
     if (db) {
+      // Reset room to waiting state so players can start a new game
+      // and the canvas is re-enabled.
       await updateDoc(doc(db, "rooms", code), {
-        status: "ended",
+        status: "waiting",
         updatedAt: serverTimestamp(),
       });
     }
