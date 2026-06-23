@@ -20,6 +20,7 @@ export function PlayerSelectGrid({
   selfSelectable = true,
   selfUid,
   emptyHint,
+  votedUids,
 }: {
   players: { uid: string; name: string; photoUrl: string | null; alive: boolean }[];
   selectedUid: string | null;
