@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { GradientBackdrop } from "@/components/theme/GradientBackdrop";
@@ -52,10 +52,19 @@ export default function RoomPage() {
     router.replace("/home");
   }
 
-  function handleStart() {
+  async function handleStart() {
     if (!room?.gameType) return;
-    router.push(`/play/${code}/${room.gameType}`);
+    const { doc, updateDoc } = await import("firebase/firestore");
+    const { db } = await import("@/lib/firebase");
+    if (db) await updateDoc(doc(db, "rooms", code), { status: "playing" });
+    // the useEffect below will auto-route the host + everyone else
   }
+
+  useEffect(() => {
+    if (room?.status === "playing" && room.gameType) {
+      router.push(`/play/${code}/${room.gameType}`);
+    }
+  }, [room?.status, room?.gameType, code, router]);
 
   if (exists === false) {
     return (
