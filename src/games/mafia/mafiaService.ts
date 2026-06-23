@@ -160,7 +160,7 @@ export function nightActionsReady(state: MafiaGameState): boolean {
 /** Have all living players voted in the day phase? */
 export function dayVotesReady(state: MafiaGameState): boolean {
   const living = state.players.filter((p) => p.alive);
-  return Object.keys(state.dayVotes).length >= living.length;
+  return Object.keys(state.dayVotes || {}).length >= living.length;
 }
 
 /** Resolve the night and advance the doc to night-results. */
@@ -239,7 +239,7 @@ export async function resolveDayPhase(code: string): Promise<void> {
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "day") return;
 
-    const result = resolveDay(state.dayVotes);
+    const result = resolveDay(state.dayVotes || {});
     const eliminatedUid: string | null = result.eliminated;
     const players = eliminatedUid
       ? applyDeaths(state.players, [eliminatedUid])

@@ -18,7 +18,7 @@ export function DayScreen() {
 
   if (!state || !me) return null;
 
-  const myVote = state.dayVotes[me.uid];
+  const myVote = (state.dayVotes || {})[me.uid];
   const voted = Boolean(myVote);
   const alive = me.alive;
 
@@ -55,7 +55,7 @@ export function DayScreen() {
           Discuss
         </TabBtn>
         <div className="ml-auto self-center text-xs text-muted">
-          {Object.keys(state.dayVotes).length}/{state.players.filter((p) => p.alive).length} voted
+          {Object.keys(state.dayVotes || {}).length}/{state.players.filter((p) => p.alive).length} voted
         </div>
       </div>
 
