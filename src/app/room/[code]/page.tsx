@@ -54,12 +54,14 @@ export default function RoomPage() {
     router.replace("/home");
   }
 
+  const [starting, setStarting] = useState(false);
+
   async function handleStart() {
-    if (!room?.gameType) return;
+    if (!room?.gameType || starting) return;
     if (room.gameType === "mafia") {
       setShowSettings(true);
     } else {
-      // For other games, just start immediately
+      setStarting(true);
       const { doc, updateDoc } = await import("firebase/firestore");
       const { db } = await import("@/lib/firebase");
       if (db) await updateDoc(doc(db, "rooms", code), { status: "playing" });
@@ -78,6 +80,9 @@ export default function RoomPage() {
   }
 
   useEffect(() => {
+    if (room?.gameType) {
+      router.prefetch(`/play/${code}/${room.gameType}`);
+    }
     if (room?.status === "playing" && room.gameType) {
       router.push(`/play/${code}/${room.gameType}`);
     }
@@ -217,8 +222,8 @@ export default function RoomPage() {
         {/* Start button (host only) */}
         <div className="border-t border-white/10 bg-vice-night/70 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
           {isHost ? (
-            <NeonButton variant="pink" size="lg" fullWidth glow disabled={!canStart} onClick={handleStart}>
-              {canStart ? `Start ${room.gameType ? GAME_NAME[room.gameType] : "Game"} →` : `Need ${4 - players.length} more`}
+            <NeonButton variant="pink" size="lg" fullWidth glow disabled={!canStart || starting} onClick={handleStart}>
+              {starting ? "Starting..." : canStart ? `Start ${room.gameType ? GAME_NAME[room.gameType] : "Game"} →` : `Need ${4 - players.length} more`}
             </NeonButton>
           ) : (
             <p className="text-center text-sm text-muted">
@@ -312,8 +317,9 @@ function SettingsModal({
 }: {
   playerCount: number;
   onClose: () => void;
-  onConfirm: (comp: RoleComposition) => void;
+  onConfirm: (comp: RoleComposition) => Promise<void>;
 }) {
+  const [loading, setLoading] = useState(false);
   const [mafia, setMafia] = useState(playerCount >= 9 ? 3 : playerCount >= 6 ? 2 : 1);
   const [doctor, setDoctor] = useState(1);
   const [detective, setDetective] = useState(1);
@@ -381,11 +387,20 @@ function SettingsModal({
           {!valid && <p className="text-center text-sm text-neon-pink mt-2">Too many special roles!</p>}
         </div>
         <div className="flex gap-3">
-          <NeonButton variant="ghost" className="flex-1" onClick={onClose}>
+          <NeonButton variant="ghost" className="flex-1" onClick={onClose} disabled={loading}>
             Cancel
           </NeonButton>
-          <NeonButton variant="pink" className="flex-1" glow disabled={!valid} onClick={() => onConfirm({ mafia, doctor, detective, sheriff, jester })}>
-            Start Game
+          <NeonButton
+            variant="pink"
+            className="flex-1"
+            glow
+            disabled={!valid || loading}
+            onClick={async () => {
+              setLoading(true);
+              await onConfirm({ mafia, doctor, detective, sheriff, jester });
+            }}
+          >
+            {loading ? "Starting..." : "Start Game"}
           </NeonButton>
         </div>
       </motion.div>

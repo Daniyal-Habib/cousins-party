@@ -62,7 +62,7 @@ function MafiaNight() {
 
   async function confirm() {
     if (!target) return;
-    await submitMafiaVote(code, target, me!.uid);
+    await submitMafiaVote(code, me!.uid, target);
     setSubmitted(true);
   }
 
