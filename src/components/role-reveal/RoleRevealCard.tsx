@@ -33,6 +33,7 @@ export function RoleRevealCard({
   hiddenAccent?: "pink" | "teal" | "orange";
   hiddenSub?: string;
   prompt?: string;
+  loading?: boolean;
   onContinue: () => void;
 }) {
   const [screenH, setScreenH] = useState(0);
@@ -97,7 +98,7 @@ export function RoleRevealCard({
         initial={{ y: 0 }}
         animate={
           locked
-            ? { y: lockY }
+            ? { y: 0 }
             : dragged
               ? undefined
               : { y: 0 }
@@ -142,11 +143,11 @@ export function RoleRevealCard({
             </div>
           ) : (
             <div className="flex gap-3">
-              <NeonButton variant="ghost" size="md" className="flex-1" onClick={undo}>
+              <NeonButton variant="ghost" size="md" className="flex-1" onClick={undo} disabled={loading}>
                 Undo
               </NeonButton>
-              <NeonButton variant="teal" size="md" className="flex-1" onClick={onContinue}>
-                Continue →
+              <NeonButton variant="teal" size="md" className="flex-1" onClick={onContinue} disabled={loading}>
+                {loading ? "Loading..." : "Continue →"}
               </NeonButton>
             </div>
           )}

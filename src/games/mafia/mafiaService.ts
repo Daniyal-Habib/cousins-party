@@ -38,12 +38,13 @@ export async function startMafiaGame(
   code: string,
   hostUid: string,
   roomPlayers: RoomPlayer[],
+  compositionOverride?: any,
 ): Promise<void> {
   if (!db) throw new Error("Firestore not configured");
   const living = roomPlayers.filter((p) => !p.isSpectator);
   if (living.length < 4) throw new Error("Need at least 4 players.");
 
-  const composition = defaultComposition(living.length);
+  const composition = compositionOverride ?? defaultComposition(living.length);
   const assigned = assignRoles(
     living.map((p) => ({ uid: p.uid, name: p.name, photoUrl: p.photoUrl })),
     composition,

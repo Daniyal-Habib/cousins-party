@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import {
   nightActionsReady,
   dayVotesReady,
@@ -33,35 +33,49 @@ export function useHostEngine() {
   const { state, code, isHost } = useMafia();
   const busyRef = useRef(false);
 
-  useEffect(() => {
-    if (!isHost || !state || busyRef.current) return;
-
-    async function run(fn: () => Promise<void>) {
-      busyRef.current = true;
-      try {
-        await fn();
-      } catch (e) {
-        console.error("host engine error", e);
-      } finally {
-        // small debounce so the snapshot from the write settles before re-entry
-        setTimeout(() => (busyRef.current = false), 600);
-      }
+  // We define run inside the component body so the interval can call it directly
+  const run = useCallback(async (fn: () => Promise<void>) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      await fn();
+    } catch (e) {
+      console.error("host engine error", e);
+    } finally {
+      // small debounce so the snapshot from the write settles before re-entry
+      setTimeout(() => (busyRef.current = false), 600);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!isHost || !state) return;
 
     // NIGHT → auto-resolve when all actions in.
     if (state.phase === "night" && nightActionsReady(state)) {
       run(() => resolveNightPhase(code));
     }
 
-    // DAY → auto-resolve when all voted OR timer expired.
+    // DAY → auto-resolve when all voted
     if (state.phase === "day") {
       if (dayVotesReady(state)) {
         run(() => resolveDayPhase(code));
-      } else if (state.timerEndsAt && Date.now() >= state.timerEndsAt) {
-        run(() => resolveDayPhase(code));
+      } else if (state.timerEndsAt) {
+        // Fallback: check immediately in case it's already expired
+        if (Date.now() >= state.timerEndsAt) {
+          run(() => resolveDayPhase(code));
+        } else {
+          // Poll every second to auto-resolve exactly when the timer runs out
+          const intervalId = setInterval(() => {
+            if (Date.now() >= state.timerEndsAt!) {
+              run(() => resolveDayPhase(code));
+              clearInterval(intervalId);
+            }
+          }, 1000);
+          return () => clearInterval(intervalId);
+        }
       }
     }
-  }, [state, code, isHost]);
+  }, [state, code, isHost, run]);
 
   // Periodic staleness sweep — host-only, every 15s while a game is live.
   useEffect(() => {

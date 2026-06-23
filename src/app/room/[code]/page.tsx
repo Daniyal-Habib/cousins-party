@@ -32,6 +32,7 @@ export default function RoomPage() {
   const [showCanvas, setShowCanvas] = useState(true);
   const [copied, setCopied] = useState(false);
   const [showKick, setShowKick] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
   const isHost = me?.isHost ?? false;
@@ -54,10 +55,25 @@ export default function RoomPage() {
 
   async function handleStart() {
     if (!room?.gameType) return;
+    if (room.gameType === "mafia") {
+      setShowSettings(true);
+    } else {
+      // For other games, just start immediately
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      if (db) await updateDoc(doc(db, "rooms", code), { status: "playing" });
+    }
+  }
+
+  async function confirmStart(composition: any) {
+    if (!uid || !room) return;
+    if (room.gameType === "mafia") {
+      const { startMafiaGame } = await import("@/games/mafia/mafiaService");
+      await startMafiaGame(code, uid, players, composition);
+    }
     const { doc, updateDoc } = await import("firebase/firestore");
     const { db } = await import("@/lib/firebase");
     if (db) await updateDoc(doc(db, "rooms", code), { status: "playing" });
-    // the useEffect below will auto-route the host + everyone else
   }
 
   useEffect(() => {
@@ -223,6 +239,13 @@ export default function RoomPage() {
             }}
           />
         )}
+        {showSettings && (
+          <SettingsModal
+            playerCount={players.filter((p) => !p.isSpectator).length}
+            onClose={() => setShowSettings(false)}
+            onConfirm={(comp) => confirmStart(comp)}
+          />
+        )}
       </AnimatePresence>
     </>
   );
@@ -276,6 +299,94 @@ function KickModal({
         <NeonButton variant="ghost" fullWidth className="mt-4" onClick={onClose}>
           Done
         </NeonButton>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function SettingsModal({
+  playerCount,
+  onClose,
+  onConfirm,
+}: {
+  playerCount: number;
+  onClose: () => void;
+  onConfirm: (comp: any) => void;
+}) {
+  const [mafia, setMafia] = useState(playerCount >= 9 ? 3 : playerCount >= 6 ? 2 : 1);
+  const [doctor, setDoctor] = useState(1);
+  const [detective, setDetective] = useState(1);
+  const [sheriff, setSheriff] = useState(playerCount >= 6 ? 1 : 0);
+  const [jester, setJester] = useState(playerCount >= 6 ? 1 : 0);
+
+  const specialCount = mafia + doctor + detective + sheriff + jester;
+  const civCount = playerCount - specialCount;
+  const valid = civCount >= 0;
+
+  function RoleCounter({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+    return (
+      <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+        <span className="font-display text-sm uppercase text-ink">{label}</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onChange(Math.max(0, value - 1))}
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 active:scale-95"
+          >
+            -
+          </button>
+          <span className="w-4 text-center font-bold text-ink">{value}</span>
+          <button
+            onClick={() => onChange(value + 1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 active:scale-95"
+          >
+            +
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        className="glass w-full max-w-md rounded-t-4xl rounded-b-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+      >
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-white/20" />
+        <h3 className="mb-1 font-display text-lg uppercase text-ink">Role Settings</h3>
+        <p className="mb-4 text-sm text-muted">Total players: {playerCount}</p>
+        
+        <div className="max-h-[50vh] space-y-2 overflow-y-auto pb-4">
+          <RoleCounter label="Mafia" value={mafia} onChange={setMafia} />
+          <RoleCounter label="Doctor" value={doctor} onChange={setDoctor} />
+          <RoleCounter label="Detective" value={detective} onChange={setDetective} />
+          <RoleCounter label="Sheriff" value={sheriff} onChange={setSheriff} />
+          <RoleCounter label="Jester" value={jester} onChange={setJester} />
+          
+          <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/5 p-3 opacity-50">
+            <span className="font-display text-sm uppercase text-ink">Civilians</span>
+            <span className="w-4 text-center font-bold text-ink">{civCount}</span>
+          </div>
+          {!valid && <p className="text-center text-sm text-neon-pink mt-2">Too many special roles!</p>}
+        </div>
+        <div className="flex gap-3">
+          <NeonButton variant="ghost" className="flex-1" onClick={onClose}>
+            Cancel
+          </NeonButton>
+          <NeonButton variant="pink" className="flex-1" glow disabled={!valid} onClick={() => onConfirm({ mafia, doctor, detective, sheriff, jester })}>
+            Start Game
+          </NeonButton>
+        </div>
       </motion.div>
     </motion.div>
   );

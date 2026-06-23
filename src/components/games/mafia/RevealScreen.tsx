@@ -16,7 +16,7 @@ import { cn } from "@/lib/cn";
  */
 export function RevealScreen() {
   const { state, me, code, isHost } = useMafia();
-  const [revealed, setRevealed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!state || !me) return null;
   const role = ROLE_META[me.role];
@@ -38,52 +38,19 @@ export function RevealScreen() {
     );
   }
 
-  if (!revealed) {
-    return (
-      <RoleRevealCard
-        name={me.name}
-        photoUrl={me.photoUrl}
-        hidden={role.label}
-        hiddenAccent={role.color as "pink" | "teal" | "orange"}
-        hiddenSub={role.description}
-        onContinue={() => setRevealed(true)}
-      />
-    );
-  }
-
-  // After the card continue: show role summary + confirm.
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="relative flex min-h-[100dvh] flex-col items-center justify-center px-6 text-center"
-    >
-      <Avatar name={me.name} photoUrl={me.photoUrl} size={96} ring={role.color as "pink" | "teal" | "orange"} />
-      <p className="mt-4 font-display text-[11px] uppercase tracking-[0.4em] text-muted">
-        Your role
-      </p>
-      <p
-        className={cn(
-          "mt-1 font-display text-4xl uppercase",
-          role.color === "pink" && "text-neon-pink neon-text",
-          role.color === "teal" && "text-neon-teal neon-text-teal",
-          role.color === "orange" && "text-neon-orange neon-text",
-        )}
-      >
-        {role.label}
-      </p>
-      <p className="mt-3 max-w-xs text-sm text-muted">{role.description}</p>
-
-      <NeonButton
-        variant="teal"
-        size="lg"
-        glow
-        className="mt-8"
-        onClick={() => acknowledgeReveal(code, me.uid)}
-      >
-        Got it →
-      </NeonButton>
-    </motion.div>
+    <RoleRevealCard
+      name={me.name}
+      photoUrl={me.photoUrl}
+      hidden={role.label}
+      hiddenAccent={role.color as "pink" | "teal" | "orange"}
+      hiddenSub={role.description}
+      loading={submitting}
+      onContinue={async () => {
+        setSubmitting(true);
+        await acknowledgeReveal(code, me.uid);
+      }}
+    />
   );
 }
 

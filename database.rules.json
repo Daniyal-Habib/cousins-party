@@ -3,7 +3,6 @@
     "presence": {
       "$roomCode": {
         "$uid": {
-          // Presence is written by the client owning that uid; readable by room members.
           ".read": "true",
           ".write": "true"
         }
@@ -11,7 +10,6 @@
     },
     "canvas": {
       "$roomCode": {
-        // Shared drawing canvas: anyone in a room can read + add strokes.
         ".read": "true",
         ".write": "true"
       }

@@ -77,7 +77,6 @@ export function DayScreen() {
                 selectedUid={myVote && myVote !== "skip" ? myVote : null}
                 onSelect={castVote}
                 selfUid={me.uid}
-                excludeUids={[me.uid]}
                 emptyHint="Nobody left to vote against."
               />
               <NeonButton
