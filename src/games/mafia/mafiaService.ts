@@ -49,7 +49,7 @@ export async function startMafiaGame(
     composition,
   );
   const state = createMafiaState(hostUid, assigned);
-  await setDoc(doc(db, "rooms", code, "game"), {
+  await setDoc(doc(db, "rooms", code, "games", "mafia"), {
     ...state,
     updatedAt: serverTimestamp(),
   });
@@ -64,7 +64,7 @@ export function subscribeMafia(
     cb(null);
     return () => {};
   }
-  return onSnapshot(doc(db, "rooms", code, "game"), (snap) => {
+  return onSnapshot(doc(db, "rooms", code, "games", "mafia"), (snap) => {
     cb(snap.exists() ? (snap.data() as MafiaGameState) : null);
   });
 }
@@ -77,7 +77,7 @@ export function subscribeMafia(
 /** Mafia member submits their night kill vote. */
 export async function submitMafiaVote(code: string, uid: string, targetUid: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "game"), {
+  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
     [`nightActions.mafiaVotes.${uid}`]: targetUid,
     updatedAt: serverTimestamp(),
   });
@@ -86,7 +86,7 @@ export async function submitMafiaVote(code: string, uid: string, targetUid: stri
 /** Doctor submits their night save target. */
 export async function submitDoctorSave(code: string, targetUid: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "game"), {
+  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
     "nightActions.doctorSave": targetUid,
     updatedAt: serverTimestamp(),
   });
@@ -95,7 +95,7 @@ export async function submitDoctorSave(code: string, targetUid: string) {
 /** Detective submits who they want to investigate. */
 export async function submitDetectiveCheck(code: string, targetUid: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "game"), {
+  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
     "nightActions.detectiveCheck": targetUid,
     updatedAt: serverTimestamp(),
   });
@@ -104,7 +104,7 @@ export async function submitDetectiveCheck(code: string, targetUid: string) {
 /** Sheriff submits their (one-time) shot. */
 export async function submitSheriffShot(code: string, targetUid: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "game"), {
+  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
     "nightActions.sheriffShot": targetUid,
     sheriffUsedShot: true,
     updatedAt: serverTimestamp(),
@@ -114,7 +114,7 @@ export async function submitSheriffShot(code: string, targetUid: string) {
 /** Player submits a day vote (target uid or "skip"). */
 export async function submitDayVote(code: string, voterUid: string, target: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "game"), {
+  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
     [`dayVotes.${voterUid}`]: target,
     updatedAt: serverTimestamp(),
   });
@@ -123,7 +123,7 @@ export async function submitDayVote(code: string, voterUid: string, target: stri
 /** Acknowledge role reveal so the host can advance to night. */
 export async function acknowledgeReveal(code: string, uid: string) {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "game"), {
+  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
     revealAcknowledged: arrayUnion(uid),
     updatedAt: serverTimestamp(),
   });
@@ -166,7 +166,7 @@ export async function resolveNightPhase(code: string): Promise<void> {
   if (!db) return;
   const database = db;
   await runTransaction(database, async (tx) => {
-    const snap = await tx.get(doc(database, "rooms", code, "game"));
+    const snap = await tx.get(doc(database, "rooms", code, "games", "mafia"));
     if (!snap.exists()) return;
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "night") return;
@@ -186,7 +186,7 @@ export async function resolveNightPhase(code: string): Promise<void> {
     }
 
     const newPlayers = applyDeaths(state.players, result.killed, extraDeaths);
-    tx.update(doc(database, "rooms", code, "game"), {
+    tx.update(doc(database, "rooms", code, "games", "mafia"), {
       players: newPlayers,
       lastNight: { ...result, extraDeaths },
       phase: "night-results",
@@ -200,7 +200,7 @@ export async function startDayPhase(code: string): Promise<void> {
   if (!db) return;
   const database = db;
   await runTransaction(database, async (tx) => {
-    const snap = await tx.get(doc(database, "rooms", code, "game"));
+    const snap = await tx.get(doc(database, "rooms", code, "games", "mafia"));
     if (!snap.exists()) return;
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "night-results") return;
@@ -208,7 +208,7 @@ export async function startDayPhase(code: string): Promise<void> {
     // Check for a night win before starting day.
     const win = checkWin(state.players);
     if (win.winner) {
-      tx.update(doc(database, "rooms", code, "game"), {
+      tx.update(doc(database, "rooms", code, "games", "mafia"), {
         phase: "ended",
         win,
         endedAt: Date.now(),
@@ -218,7 +218,7 @@ export async function startDayPhase(code: string): Promise<void> {
       return;
     }
 
-    tx.update(doc(database, "rooms", code, "game"), {
+    tx.update(doc(database, "rooms", code, "games", "mafia"), {
       phase: "day",
       dayVotes: {},
       timerEndsAt: Date.now() + DAY_DURATION_MS,
@@ -232,7 +232,7 @@ export async function resolveDayPhase(code: string): Promise<void> {
   if (!db) return;
   const database = db;
   await runTransaction(database, async (tx) => {
-    const snap = await tx.get(doc(database, "rooms", code, "game"));
+    const snap = await tx.get(doc(database, "rooms", code, "games", "mafia"));
     if (!snap.exists()) return;
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "day") return;
@@ -245,7 +245,7 @@ export async function resolveDayPhase(code: string): Promise<void> {
 
     const win = checkWin(players, eliminatedUid ?? undefined);
     if (win.winner) {
-      tx.update(doc(database, "rooms", code, "game"), {
+      tx.update(doc(database, "rooms", code, "games", "mafia"), {
         players,
         lastDay: result,
         phase: "ended",
@@ -259,7 +259,7 @@ export async function resolveDayPhase(code: string): Promise<void> {
       return;
     }
 
-    tx.update(doc(database, "rooms", code, "game"), {
+    tx.update(doc(database, "rooms", code, "games", "mafia"), {
       players,
       lastDay: result,
       phase: "day-results",
@@ -274,12 +274,12 @@ export async function startNextNight(code: string): Promise<void> {
   if (!db) return;
   const database = db;
   await runTransaction(database, async (tx) => {
-    const snap = await tx.get(doc(database, "rooms", code, "game"));
+    const snap = await tx.get(doc(database, "rooms", code, "games", "mafia"));
     if (!snap.exists()) return;
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "day-results") return;
 
-    tx.update(doc(database, "rooms", code, "game"), {
+    tx.update(doc(database, "rooms", code, "games", "mafia"), {
       phase: "night",
       round: state.round + 1,
       nightActions: {
@@ -296,11 +296,11 @@ export async function endRevealPhase(code: string): Promise<void> {
   if (!db) return;
   const database = db;
   await runTransaction(database, async (tx) => {
-    const snap = await tx.get(doc(database, "rooms", code, "game"));
+    const snap = await tx.get(doc(database, "rooms", code, "games", "mafia"));
     if (!snap.exists()) return;
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "reveal") return;
-    tx.update(doc(database, "rooms", code, "game"), {
+    tx.update(doc(database, "rooms", code, "games", "mafia"), {
       phase: "night",
       round: 1,
       nightActions: { mafiaVotes: {} },
@@ -312,7 +312,7 @@ export async function endRevealPhase(code: string): Promise<void> {
 /** Host manually ends the day early. */
 export async function forceEndDay(code: string): Promise<void> {
   if (!db) return;
-  await updateDoc(doc(db, "rooms", code, "game"), {
+  await updateDoc(doc(db, "rooms", code, "games", "mafia"), {
     timerEndsAt: Date.now(),
     updatedAt: serverTimestamp(),
   });
@@ -338,7 +338,7 @@ export async function sweepStalePlayers(code: string, graceMs = 60_000): Promise
   if (staleUids.length === 0) return;
 
   await runTransaction(database, async (tx) => {
-    const snap = await tx.get(doc(database, "rooms", code, "game"));
+    const snap = await tx.get(doc(database, "rooms", code, "games", "mafia"));
     if (!snap.exists()) return;
     const state = snap.data() as MafiaGameState;
     if (state.phase === "ended") return;
@@ -354,7 +354,7 @@ export async function sweepStalePlayers(code: string, graceMs = 60_000): Promise
     );
 
     const win = checkWin(players);
-    tx.update(doc(database, "rooms", code, "game"), {
+    tx.update(doc(database, "rooms", code, "games", "mafia"), {
       players,
       ...(win.winner
         ? { phase: "ended" as const, win, endedAt: Date.now() }
