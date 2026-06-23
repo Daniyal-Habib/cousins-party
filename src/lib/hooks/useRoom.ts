@@ -74,7 +74,7 @@ export function useRoom(
     if (!code || !uid || !me) return;
     const detach = attachPresence(code, uid);
     return detach;
-  }, [code, uid, me]);
+  }, [code, uid, me?.uid]);
 
   const host = useMemo(
     () => players.find((p) => p.uid === room?.hostUid) ?? null,
