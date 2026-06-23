@@ -48,7 +48,6 @@ export interface RoomPlayer {
   isSpectator: boolean;
 }
 
-/** A chat message, used for room/public/spectator chats. */
 export interface ChatMessage {
   id: string;
   authorUid: string;
@@ -56,4 +55,5 @@ export interface ChatMessage {
   authorPhoto?: string | null;
   text: string;
   createdAt: number;
+  isDead?: boolean;
 }

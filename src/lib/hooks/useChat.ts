@@ -40,12 +40,13 @@ export function useChat(code: string, subcollection: string) {
     return unsub;
   }, [code, subcollection]);
 
-  async function send(author: { uid: string; name: string; photo: string | null }, text: string) {
+  async function send(author: { uid: string; name: string; photo: string | null; isDead?: boolean }, text: string) {
     if (!db || !text.trim()) return;
     await addDoc(collection(db, "rooms", code, subcollection), {
       authorUid: author.uid,
       authorName: author.name,
       authorPhoto: author.photo,
+      isDead: author.isDead ?? false,
       text: text.trim().slice(0, 500),
       createdAt: serverTimestamp(),
     });

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { GlassPanel } from "@/components/theme/GlassPanel";
 import { NeonButton } from "@/components/theme/NeonButton";
+import { Avatar } from "@/components/theme/Avatar";
 import { PlayerSelectGrid } from "@/components/games/PlayerSelectGrid";
 import { ChatPanel } from "@/components/games/ChatPanel";
 import { useMafia } from "@/games/mafia/useMafia";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/cn";
 export function DayScreen() {
   const { state, me, code, isHost } = useMafia();
   const [tab, setTab] = useState<"vote" | "chat">("vote");
+  const [confirmVote, setConfirmVote] = useState<{ targetUid: string; targetName: string; targetPhoto: string | null } | null>(null);
   const { formatted, expired } = useServerTimer(state?.timerEndsAt ?? null);
 
   if (!state || !me) return null;
@@ -30,10 +32,11 @@ export function DayScreen() {
           <ChatPanel
             code={code}
             subcollection="chat"
-            author={{ uid: me.uid, name: me.name, photo: me.photoUrl }}
+            author={{ uid: me.uid, name: me.name, photo: me.photoUrl, isDead: true }}
             placeholder="You're out — chat only…"
             accent="pink"
             compact
+            viewerIsDead={true}
           />
         </div>
       </DayShell>
@@ -58,6 +61,21 @@ export function DayScreen() {
 
       {tab === "vote" ? (
         <div className="space-y-3">
+          <PlayerSelectGrid
+            players={state.players}
+            selectedUid={myVote && myVote !== "skip" ? myVote : null}
+            onSelect={(uid) => {
+              if (voted) return;
+              const target = state.players.find(p => p.uid === uid);
+              if (target) {
+                setConfirmVote({ targetUid: target.uid, targetName: target.name, targetPhoto: target.photoUrl });
+              }
+            }}
+            selfUid={me.uid}
+            emptyHint="Nobody left to vote against."
+            votedUids={Object.keys(state.dayVotes || {})}
+            disabledUids={voted ? state.players.map(p => p.uid) : []}
+          />
           {voted ? (
             <GlassPanel glow="pink" className="text-center">
               <p className="font-display uppercase text-ink">
@@ -68,23 +86,13 @@ export function DayScreen() {
               </p>
             </GlassPanel>
           ) : (
-            <>
-              <PlayerSelectGrid
-                players={state.players}
-                selectedUid={myVote && myVote !== "skip" ? myVote : null}
-                onSelect={castVote}
-                selfUid={me.uid}
-                emptyHint="Nobody left to vote against."
-                votedUids={Object.keys(state.dayVotes || {})}
-              />
-              <NeonButton
-                variant="ghost"
-                fullWidth
-                onClick={() => castVote("skip")}
-              >
-                Skip vote
-              </NeonButton>
-            </>
+            <NeonButton
+              variant="ghost"
+              fullWidth
+              onClick={() => castVote("skip")}
+            >
+              Skip vote
+            </NeonButton>
           )}
           {expired && isHost && (
             <NeonButton variant="pink" fullWidth glow onClick={() => forceEndDay(code)}>
@@ -97,13 +105,71 @@ export function DayScreen() {
           <ChatPanel
             code={code}
             subcollection="chat"
-            author={{ uid: me.uid, name: me.name, photo: me.photoUrl }}
+            author={{ uid: me.uid, name: me.name, photo: me.photoUrl, isDead: false }}
             placeholder="Discuss who you suspect…"
             accent="pink"
             compact
+            viewerIsDead={false}
           />
         </div>
       )}
+
+      {/* Vote Confirmation Modal */}
+      <AnimatePresence>
+        {confirmVote && (
+          <motion.div
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-0 z-50 flex flex-col bg-vice-night"
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setConfirmVote(null)}
+              className="absolute left-5 top-[max(1rem,env(safe-area-inset-top))] z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Photo fills the screen */}
+            <div className="relative flex-1 overflow-hidden">
+              {confirmVote.targetPhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={confirmVote.targetPhoto} alt={confirmVote.targetName} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-vice-dusk to-vice-midnight">
+                  <Avatar name={confirmVote.targetName} photoUrl={null} size={140} />
+                </div>
+              )}
+              {/* Frosted gradient at bottom for legibility */}
+              <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-vice-night to-transparent" />
+              {/* Name */}
+              <div className="absolute inset-x-0 bottom-0 p-6 text-center">
+                <p className="font-display text-3xl uppercase text-ink neon-text">{confirmVote.targetName}</p>
+              </div>
+            </div>
+            
+            {/* Action button */}
+            <div className="bg-vice-night/95 px-6 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+              <NeonButton
+                variant="pink"
+                size="lg"
+                fullWidth
+                glow
+                onClick={() => {
+                  castVote(confirmVote.targetUid);
+                  setConfirmVote(null);
+                }}
+              >
+                Vote {confirmVote.targetName}
+              </NeonButton>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </DayShell>
   );
 }

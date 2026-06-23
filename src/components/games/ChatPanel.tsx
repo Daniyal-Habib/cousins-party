@@ -18,13 +18,15 @@ export function ChatPanel({
   placeholder = "Type a message…",
   accent = "pink",
   compact,
+  viewerIsDead,
 }: {
   code: string;
   subcollection: string;
-  author: { uid: string; name: string; photo: string | null };
+  author: { uid: string; name: string; photo: string | null; isDead?: boolean };
   placeholder?: string;
   accent?: "pink" | "teal";
   compact?: boolean;
+  viewerIsDead?: boolean;
 }) {
   const { messages, send } = useChat(code, subcollection);
   const [text, setText] = useState("");
@@ -40,12 +42,12 @@ export function ChatPanel({
   return (
     <div className={cn("flex flex-col", compact ? "h-full" : "h-full")}>
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-3 py-3 no-scrollbar">
-        {messages.length === 0 && (
+        {messages.filter(m => viewerIsDead || !m.isDead).length === 0 && (
           <p className="mt-4 text-center text-xs text-muted">
             No messages yet — break the ice.
           </p>
         )}
-        {messages.map((m) => {
+        {messages.filter(m => viewerIsDead || !m.isDead).map((m) => {
           const mine = m.authorUid === author.uid;
           return (
             <motion.div
