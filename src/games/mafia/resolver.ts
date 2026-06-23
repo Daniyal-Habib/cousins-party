@@ -107,7 +107,7 @@ export function resolveDay(votes: Record<string, string>): DayResult {
     return { eliminated: null, tied: false, votes: {}, skipped };
   }
   const [top, second] = sorted;
-  const tied = second && second[1] === top[1];
+  const tied = Boolean(second && second[1] === top[1]);
   return {
     eliminated: tied ? null : top[0],
     tied,
