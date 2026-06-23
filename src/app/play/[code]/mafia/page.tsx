@@ -8,7 +8,7 @@ import { MafiaProvider } from "@/games/mafia/useMafia";
 import { MafiaGame } from "@/components/games/mafia/MafiaGame";
 import { subscribeMafia } from "@/games/mafia/mafiaService";
 import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
-import { useUser } from "@/lib/hooks/useUser";
+
 
 import type { MafiaGameState } from "@/games/mafia/state";
 
@@ -24,8 +24,6 @@ export default function PlayMafiaPage() {
 function PlayMafiaInner() {
   const params = useParams<{ code: string }>();
   const code = params.code;
-  const { profile } = useUser();
-  const uid = profile?.email ?? null;
 
   const [gameState, setGameState] = useState<MafiaGameState | null | undefined>(undefined);
 
