@@ -21,6 +21,7 @@ interface MafiaCtx {
   isHost: boolean;
   alive: boolean;
   spectator: boolean;
+  hasPendingWrites: boolean;
 }
 
 const Ctx = createContext<MafiaCtx | null>(null);
@@ -33,10 +34,12 @@ export function MafiaProvider({ children }: { children: ReactNode }) {
 
   const [state, setState] = useState<MafiaGameState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasPendingWrites, setHasPendingWrites] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeMafia(code, (s) => {
+    const unsub = subscribeMafia(code, (s, pending) => {
       setState(s);
+      setHasPendingWrites(pending);
       setLoading(false);
     });
     return unsub;
@@ -57,6 +60,7 @@ export function MafiaProvider({ children }: { children: ReactNode }) {
     isHost: state?.hostUid === uid,
     alive: me?.alive ?? false,
     spectator: me?.isSpectator ?? false,
+    hasPendingWrites,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -30,7 +30,7 @@ import { useMafia } from "./useMafia";
  * win conditions (per PRD §2.4 / §6 error handling).
  */
 export function useHostEngine() {
-  const { state, code, isHost } = useMafia();
+  const { state, code, isHost, hasPendingWrites } = useMafia();
   const busyRef = useRef(false);
 
   // We define run inside the component body so the interval can call it directly
@@ -48,7 +48,7 @@ export function useHostEngine() {
   }, []);
 
   useEffect(() => {
-    if (!isHost || !state) return;
+    if (!isHost || !state || hasPendingWrites) return;
 
     // NIGHT → auto-resolve when all actions in.
     if (state.phase === "night" && nightActionsReady(state)) {
@@ -75,7 +75,7 @@ export function useHostEngine() {
         }
       }
     }
-  }, [state, code, isHost, run]);
+  }, [state, code, isHost, hasPendingWrites, run]);
 
   // Periodic staleness sweep — host-only, every 15s while a game is live.
   useEffect(() => {

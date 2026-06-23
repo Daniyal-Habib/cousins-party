@@ -60,14 +60,14 @@ export async function startMafiaGame(
 /** Subscribe to the game doc. */
 export function subscribeMafia(
   code: string,
-  cb: (state: MafiaGameState | null) => void,
+  cb: (state: MafiaGameState | null, pendingWrites: boolean) => void,
 ): () => void {
   if (!db) {
     cb(null);
     return () => {};
   }
   return onSnapshot(doc(db, "rooms", code, "games", "mafia"), (snap) => {
-    cb(snap.exists() ? (snap.data() as MafiaGameState) : null);
+    cb(snap.exists() ? (snap.data() as MafiaGameState) : null, snap.metadata.hasPendingWrites);
   });
 }
 
