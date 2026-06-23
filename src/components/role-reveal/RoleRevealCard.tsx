@@ -25,6 +25,7 @@ export function RoleRevealCard({
   hiddenAccent,      // color theme for the hidden panel
   hiddenSub,         // optional supporting line (e.g. role description)
   prompt = "Drag up to reveal",
+  loading,
   onContinue,
 }: {
   name: string;
