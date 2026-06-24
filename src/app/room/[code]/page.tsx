@@ -276,6 +276,19 @@ export default function RoomPage() {
       </main>
 
       {/* Kick / manage modal */}
+      <AnimatePresence>
+        {showKick && (
+          <KickModal
+            players={players}
+            selfUid={uid ?? ""}
+            onClose={() => setShowKick(false)}
+            onKick={async (targetUid) => {
+              await kickPlayer(code, targetUid);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Full Screen Canvas Modal */}
       <AnimatePresence>
         {fullScreenCanvas && (
