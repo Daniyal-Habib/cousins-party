@@ -58,11 +58,15 @@ export async function startMafiaGame(
   });
 
   // Clear chat and mafiaChat subcollections for the new game
-  const { getDocs, collection, deleteDoc } = await import("firebase/firestore");
-  const chatSnap = await getDocs(collection(db, "rooms", code, "chat"));
-  chatSnap.forEach((d) => deleteDoc(d.ref));
-  const mafiaChatSnap = await getDocs(collection(db, "rooms", code, "mafiaChat"));
-  mafiaChatSnap.forEach((d) => deleteDoc(d.ref));
+  try {
+    const { getDocs, collection, deleteDoc } = await import("firebase/firestore");
+    const chatSnap = await getDocs(collection(db, "rooms", code, "chat"));
+    chatSnap.forEach((d) => deleteDoc(d.ref).catch(() => {}));
+    const mafiaChatSnap = await getDocs(collection(db, "rooms", code, "mafiaChat"));
+    mafiaChatSnap.forEach((d) => deleteDoc(d.ref).catch(() => {}));
+  } catch (err) {
+    console.warn("Could not clear old chats. Check Firestore rules for allow delete.", err);
+  }
 }
 
 /** Subscribe to the game doc. */
