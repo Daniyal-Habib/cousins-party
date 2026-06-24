@@ -52,7 +52,6 @@ export function NightScreen() {
 function MafiaNight() {
   const { state, me, code } = useMafia();
   const [target, setTarget] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
 
   const teammates = state!.players.filter(
     (p) => p.role === "mafia" && p.uid !== me!.uid,
