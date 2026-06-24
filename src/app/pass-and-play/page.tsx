@@ -34,15 +34,13 @@ export default function PassAndPlayPage() {
           }
         />
       )}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={state.phase + state.round}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="relative flex-1 flex flex-col min-h-[100dvh]"
-        >
+      <motion.div
+        key={state.phase + state.round}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="relative flex-1 flex flex-col min-h-[100dvh]"
+      >
           {state.phase === "setup" && <SetupScreen onStart={(p, c) => dispatch({ type: "START", players: p, composition: c })} />}
           {state.phase === "reveal" && (
             <RevealScreenLocal
@@ -84,7 +82,6 @@ export default function PassAndPlayPage() {
           )}
           {state.phase === "ended" && <LocalEndScreen state={state} onRestart={() => dispatch({ type: "RESET" })} />}
         </motion.div>
-      </AnimatePresence>
     </>
   );
 }
@@ -322,6 +319,8 @@ function ModeratorScreen({
       <NeonButton variant="teal" size="lg" fullWidth glow onClick={confirm}>
         Resolve Night →
       </NeonButton>
+
+      <RoleDashboard players={state.players} />
     </main>
   );
 }
@@ -380,6 +379,8 @@ function VoteScreen({
       <NeonButton variant="pink" size="lg" fullWidth glow onClick={confirm}>
         Resolve Vote →
       </NeonButton>
+
+      <RoleDashboard players={state.players} />
     </main>
   );
 }
@@ -538,3 +539,21 @@ function Picker({
 }
 
 type MafiaPlayerLite = { uid: string; name: string; photoUrl: string | null };
+
+function RoleDashboard({ players }: { players: { uid: string; name: string; role: keyof typeof ROLE_META; alive: boolean; photoUrl: string | null }[] }) {
+  return (
+    <div className="mt-8 rounded-2xl bg-white/5 p-4">
+      <h3 className="mb-3 px-1 font-display text-xs uppercase tracking-[0.3em] text-muted">
+        Player Roles Dashboard
+      </h3>
+      <div className="grid grid-cols-2 gap-2">
+        {players.map((p) => (
+          <div key={p.uid} className={cn("flex flex-col rounded-lg bg-vice-night/60 p-2 text-center border border-white/5", !p.alive && "opacity-40 grayscale")}>
+             <span className="text-sm font-bold text-ink truncate">{p.name}</span>
+             <span className="text-[10px] uppercase font-display tracking-widest mt-0.5" style={{ color: ROLE_META[p.role].color === "pink" ? "#FF2A6D" : ROLE_META[p.role].color === "teal" ? "#05D9E8" : "#FF7B00" }}>{ROLE_META[p.role].label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
