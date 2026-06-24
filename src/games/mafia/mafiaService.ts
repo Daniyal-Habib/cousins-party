@@ -303,7 +303,7 @@ export async function startNextNight(code: string): Promise<void> {
     const state = snap.data() as MafiaGameState;
     if (state.phase !== "day-results") return;
 
-    const prevSave = state.lastNight?.savedByDoctor ?? null;
+    const prevSave = state.nightActions?.doctorSave ?? null;
     tx.update(doc(database, "rooms", code, "games", "mafia"), {
       phase: "night",
       round: state.round + 1,
@@ -379,7 +379,7 @@ export async function sweepStalePlayers(code: string, graceMs = 60_000): Promise
     if (toKill.length === 0) return;
 
     const players = state.players.map((p) =>
-      toKill.includes(p.uid) ? { ...p, alive: false, isSpectator: true } : p,
+      toKill.includes(p.uid) ? { ...p, alive: false, isSpectator: true, deathReason: "voted" as const } : p,
     );
 
     const win = checkWin(players);

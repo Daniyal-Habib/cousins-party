@@ -56,6 +56,7 @@ export type LocalAction =
   | { type: "REVEAL_DONE" }
   | { type: "SET_NIGHT"; payload: LocalMafiaState["pendingNight"] }
   | { type: "RESOLVE_NIGHT" }
+  | { type: "START_DAY_VOTE" }
   | { type: "SET_VOTE"; eliminatedUid?: string; tie: boolean }
   | { type: "RESOLVE_VOTE" }
   | { type: "NEXT_ROUND" }
@@ -182,6 +183,13 @@ export function localMafiaReducer(
         win: win.winner ? win : null,
       };
     }
+
+    case "START_DAY_VOTE":
+      return {
+        ...state,
+        phase: "vote",
+        lastNightNarration: null,
+      };
 
     case "NEXT_ROUND":
       return {

@@ -84,19 +84,34 @@ function MafiaNight() {
       subtitle="Pick tonight's target with your crew. You must agree."
       accent="pink"
     >
-      {/* Teammates */}
+      {/* Teammates + vote status */}
       {teammates.length > 0 && (
         <div className="mb-4">
           <p className="mb-2 px-1 font-display text-[11px] uppercase tracking-[0.3em] text-muted">
             Your Mafia
           </p>
-          <div className="flex gap-3">
-            {teammates.map((t) => (
-              <div key={t.uid} className="flex flex-col items-center gap-1">
-                <Avatar name={t.name} photoUrl={t.photoUrl} size={48} ring="pink" />
-                <span className="text-[10px] text-ink">{t.name}</span>
-              </div>
-            ))}
+          <div className="space-y-2">
+            {teammates.map((t) => {
+              const theirVote = state!.nightActions.mafiaVotes?.[t.uid];
+              const myCurrentVote = myVote || target;
+              const agreed = theirVote && myCurrentVote && theirVote === myCurrentVote;
+              const disagreed = theirVote && myCurrentVote && theirVote !== myCurrentVote;
+              return (
+                <div key={t.uid} className="flex items-center gap-3 rounded-2xl bg-white/5 px-3 py-2">
+                  <Avatar name={t.name} photoUrl={t.photoUrl} size={40} ring="pink" />
+                  <span className="flex-1 text-sm font-semibold text-ink">{t.name}</span>
+                  {!theirVote ? (
+                    <span className="text-[10px] uppercase tracking-wider text-muted animate-pulse">Picking…</span>
+                  ) : agreed ? (
+                    <span className="text-[10px] uppercase tracking-wider text-neon-teal">Agreed ✓</span>
+                  ) : disagreed ? (
+                    <span className="text-[10px] uppercase tracking-wider text-neon-orange">Different pick</span>
+                  ) : (
+                    <span className="text-[10px] uppercase tracking-wider text-neon-teal">Voted ✓</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -105,7 +120,12 @@ function MafiaNight() {
       {isDisagreement && (
         <div className="mb-4 rounded-xl border border-neon-orange/30 bg-neon-orange/10 px-4 py-3 text-sm text-neon-orange">
           <p className="font-bold uppercase tracking-wider">Disagreement</p>
-          <p className="mt-1 opacity-90">The Mafia must agree on the same target to eliminate them.</p>
+          <p className="mt-1 opacity-90">Your crew picked different targets. Change yours or convince them — the Mafia must agree.</p>
+        </div>
+      )}
+      {!isSingleMafia && !allVoted && myVote && (
+        <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted">
+          <p className="animate-pulse">⏳ Waiting on other mafia to pick…</p>
         </div>
       )}
 
@@ -261,6 +281,7 @@ function DetectiveNight() {
 function SheriffNight() {
   const { state, me, code } = useMafia();
   const [target, setTarget] = useState<string | null>(null);
+  const [holdingFire, setHoldingFire] = useState(false);
   const usedShot = state!.sheriffUsedShot;
 
   async function confirm() {
@@ -268,11 +289,14 @@ function SheriffNight() {
     await submitSheriffShot(code, target);
   }
 
-  if (usedShot) {
+  if (usedShot || holdingFire) {
     return (
-      <PhaseShell title="Sheriff" subtitle="You've used your shot." accent="teal">
-        <GlassPanel className="text-center text-sm text-muted">
-          Stay alert — the rest of the night plays out around you.
+      <PhaseShell title="Sheriff" subtitle={usedShot ? "You've used your shot." : "Holding fire this round."} accent="teal">
+        <GlassPanel glow="teal" className="text-center">
+          <p className="font-display uppercase text-ink">{usedShot ? "Shot used" : "Holding fire"}</p>
+          <p className="mt-1 text-sm text-muted">
+            Stay alert — the rest of the night plays out around you.
+          </p>
         </GlassPanel>
       </PhaseShell>
     );
@@ -292,7 +316,7 @@ function SheriffNight() {
         excludeUids={[me!.uid]}
       />
       <div className="mt-4 flex gap-2">
-        <NeonButton variant="ghost" className="flex-1">
+        <NeonButton variant="ghost" className="flex-1" onClick={() => setHoldingFire(true)}>
           Hold fire
         </NeonButton>
         <NeonButton variant="orange" className="flex-1" disabled={!target} onClick={confirm}>

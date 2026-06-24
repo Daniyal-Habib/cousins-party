@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, type PanInfo } from "framer-motion";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { motion, useMotionValue, useAnimationControls, type PanInfo } from "framer-motion";
 import { Avatar } from "@/components/theme/Avatar";
 import { NeonButton } from "@/components/theme/NeonButton";
 import { cn } from "@/lib/cn";
@@ -37,36 +37,40 @@ export function RoleRevealCard({
   loading?: boolean;
   onContinue: () => void;
 }) {
-  const [screenH, setScreenH] = useState(0);
-  const [dragged, setDragged] = useState(false);
+  const screenHRef = useRef(0);
   const [locked, setLocked] = useState(false);
-  const lockThreshold = useRef(0);
 
-  // Read viewport height on mount + resize; lock target is exactly -50%.
+  // Drive the card position with a motion value (no React re-renders during drag).
+  const y = useMotionValue(0);
+  const controls = useAnimationControls();
+
+  // Read viewport height on mount + resize.
   useEffect(() => {
-    const update = () => setScreenH(window.innerHeight);
+    const update = () => { screenHRef.current = window.innerHeight; };
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  const lockY = -screenH / 2;          // exactly 50% up
-  lockThreshold.current = screenH / 4; // must pass 25% to lock on release
-
-  function handleDragEnd(_: unknown, info: PanInfo) {
+  const handleDragEnd = useCallback((_: unknown, info: PanInfo) => {
     if (locked) return;
-    if (info.offset.y <= lockThreshold.current) {
+    const threshold = -(screenHRef.current / 4); // negative: must drag up past 25%
+    if (info.offset.y <= threshold) {
       setLocked(true);
+      // Snap to locked position (50% up).
+      controls.start({ y: -(screenHRef.current / 2), transition: { type: "spring", stiffness: 400, damping: 35 } });
     } else {
-      // didn't drag far enough — snap back
-      setDragged(false);
+      // Didn't drag far enough — snap back.
+      controls.start({ y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } });
     }
-  }
+  }, [locked, controls]);
 
-  function undo() {
+  const undo = useCallback(() => {
     setLocked(false);
-    setDragged(false);
-  }
+    controls.start({ y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } });
+  }, [controls]);
+
+  const lockY = -(screenHRef.current || 400) / 2;
 
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-vice-night">
@@ -90,28 +94,21 @@ export function RoleRevealCard({
         </div>
       </div>
 
-      {/* Draggable card */}
+      {/* Draggable card — uses motion value for y so React doesn't re-render on every frame */}
       <motion.div
         drag={locked ? false : "y"}
-        dragConstraints={{ top: screenH ? lockY : -200, bottom: 0 }}
+        dragConstraints={{ top: lockY, bottom: 0 }}
         dragElastic={0}
         dragMomentum={false}
-        initial={{ y: 0 }}
-        animate={
-          locked
-            ? { y: 0 }
-            : dragged
-              ? undefined
-              : { y: 0 }
-        }
-        onDragStart={() => setDragged(true)}
+        style={{ y, touchAction: "none" }}
+        animate={controls}
         onDragEnd={handleDragEnd}
         className="absolute inset-0 z-10 overflow-hidden bg-vice-night shadow-2xl"
       >
         {/* Photo fills the entire screen absolutely */}
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
+          <img src={photoUrl} alt={name} className="h-full w-full object-cover" draggable={false} />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-vice-dusk to-vice-midnight">
             <Avatar name={name} photoUrl={photoUrl} size={140} />

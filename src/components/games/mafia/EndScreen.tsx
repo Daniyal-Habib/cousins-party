@@ -104,7 +104,7 @@ export function EndScreen() {
                 <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
                   {ROLE_META[p.role].label}
                 </span>
-                <p className="font-display text-neon-orange">+{p.uid === me?.uid ? 3 : 3}⭐</p>
+                <p className="font-display text-neon-orange">+{win.winner === "neutral" && p.role === "jester" ? 5 : 3}⭐</p>
               </GlassPanel>
             </motion.div>
           ))}

@@ -58,26 +58,16 @@ export default function PassAndPlayPage() {
             />
           )}
           {state.phase === "night-results" && (
-            <NarrationScreen
-              accent="teal"
-              label="Dawn Breaks"
-              narration={state.lastNightNarration ?? ""}
-              onContinue={() => dispatch({ type: "NEXT_ROUND", ...(state.round === 1 ? {} : {}) })}
-              continueLabel="Begin Day Vote"
-              nextPhase="vote"
-              dispatch={dispatch}
+            <NightResultsLocal
+              state={state}
+              onContinue={() => dispatch({ type: "START_DAY_VOTE" })}
             />
           )}
           {state.phase === "vote" && <VoteScreen state={state} dispatch={dispatch} />}
           {state.phase === "day-results" && (
-            <NarrationScreen
-              accent="pink"
-              label="Verdict"
-              narration={state.lastDayNarration ?? ""}
+            <DayResultsLocal
+              state={state}
               onContinue={() => dispatch({ type: "NEXT_ROUND" })}
-              continueLabel="Next Night"
-              nextPhase="moderator"
-              dispatch={dispatch}
             />
           )}
           {state.phase === "ended" && <LocalEndScreen state={state} onRestart={() => dispatch({ type: "RESET" })} />}
@@ -86,7 +76,9 @@ export default function PassAndPlayPage() {
   );
 }
 
-/* ---------------- Setup ---------------- */
+/* ================================================================
+   Setup
+   ================================================================ */
 function SetupScreen({ onStart }: { onStart: (players: { name: string; photoUrl: string | null }[], composition: RoleComposition) => void }) {
   const [players, setPlayers] = useState<{name: string, photoUrl: string | null}[]>([
     {name: "", photoUrl: null},
@@ -236,7 +228,9 @@ function RoleCounter({ label, value, onChange }: { label: string; value: number;
   );
 }
 
-/* ---------------- Reveal (pass around) ---------------- */
+/* ================================================================
+   Reveal (pass around)
+   ================================================================ */
 function RevealScreenLocal({
   players,
   index,
@@ -265,7 +259,9 @@ function RevealScreenLocal({
   );
 }
 
-/* ---------------- Moderator (records night) ---------------- */
+/* ================================================================
+   Moderator (records night) — styled like the online Night Phase
+   ================================================================ */
 function ModeratorScreen({
   state,
   dispatch,
@@ -278,7 +274,9 @@ function ModeratorScreen({
   const [check, setCheck] = useState<string | null>(null);
 
   const living = state.players.filter((p) => p.alive);
+  const doctor = living.find((p) => p.role === "doctor");
   const detective = living.find((p) => p.role === "detective");
+  const previousSave = state.previousSaveUid;
 
   function confirm() {
     dispatch({
@@ -293,39 +291,165 @@ function ModeratorScreen({
   }
 
   return (
-    <main className="mx-auto w-full max-w-md space-y-4 px-5 py-4">
-      <div className="text-center">
+    <main className="mx-auto w-full max-w-md overflow-y-auto px-5 py-4 no-scrollbar">
+      {/* Phase header */}
+      <div className="mb-5 text-center">
         <p className="font-display text-xs uppercase tracking-[0.4em] text-neon-teal neon-text-teal">
-          Moderator · Night {state.round}
+          Night Phase
         </p>
-        <h2 className="mt-1 font-display text-2xl uppercase text-ink">What happened?</h2>
-        <p className="mt-1 text-sm text-muted">Tap the outcomes. The app handles the rest.</p>
+        <h2 className="mt-1 font-display text-2xl uppercase text-ink">
+          Night {state.round}
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Record what happened in the dark. The app handles the rest.
+        </p>
       </div>
 
-      <ModSection label="Who did the Mafia kill?">
-        <Picker players={living} selected={killed} onSelect={setKilled} allowNone />
-      </ModSection>
+      <div className="space-y-4">
+        {/* Mafia Kill */}
+        <GlassPanel glow="pink">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">🔪</span>
+            <p className="font-display text-[11px] uppercase tracking-wider text-neon-pink">
+              Mafia Kill
+            </p>
+          </div>
+          <p className="mb-3 text-xs text-muted">Who did the Mafia choose to eliminate?</p>
+          <Picker players={living} selected={killed} onSelect={setKilled} allowNone accent="pink" />
+        </GlassPanel>
 
-      <ModSection label="Who did the Doctor save?">
-        <Picker players={living} selected={saved} onSelect={setSaved} allowNone />
-      </ModSection>
+        {/* Doctor Save */}
+        {doctor && (
+          <GlassPanel glow="teal">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">💊</span>
+              <p className="font-display text-[11px] uppercase tracking-wider text-neon-teal">
+                Doctor Save
+              </p>
+            </div>
+            {previousSave && (
+              <p className="mb-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-muted">
+                Saved <span className="font-bold text-ink">{state.players.find((p) => p.uid === previousSave)?.name}</span> last night — can&apos;t pick them again.
+              </p>
+            )}
+            <p className="mb-3 text-xs text-muted">Who did the Doctor protect?</p>
+            <Picker
+              players={living}
+              selected={saved}
+              onSelect={setSaved}
+              allowNone
+              accent="teal"
+              disabledUids={previousSave ? [previousSave] : []}
+            />
+          </GlassPanel>
+        )}
 
-      {detective && (
-        <ModSection label="Who did the Detective check?">
-          <Picker players={living} selected={check} onSelect={setCheck} allowNone />
-        </ModSection>
-      )}
+        {/* Detective Check */}
+        {detective && (
+          <GlassPanel>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">🕵️</span>
+              <p className="font-display text-[11px] uppercase tracking-wider text-muted">
+                Detective Check
+              </p>
+            </div>
+            <p className="mb-3 text-xs text-muted">Who did the Detective investigate?</p>
+            <Picker players={living} selected={check} onSelect={setCheck} allowNone accent="teal" />
+          </GlassPanel>
+        )}
 
-      <NeonButton variant="teal" size="lg" fullWidth glow onClick={confirm}>
-        Resolve Night →
-      </NeonButton>
+        <NeonButton variant="pink" size="lg" fullWidth glow onClick={confirm}>
+          Resolve Night →
+        </NeonButton>
+      </div>
 
       <RoleDashboard players={state.players} />
     </main>
   );
 }
 
-/* ---------------- Day Vote ---------------- */
+/* ================================================================
+   Night Results — dramatic narration with avatars
+   ================================================================ */
+function NightResultsLocal({
+  state,
+  onContinue,
+}: {
+  state: ReturnType<typeof initLocalMafia>;
+  onContinue: () => void;
+}) {
+  const narrationParts = (state.lastNightNarration ?? "").split(". ").filter(Boolean);
+
+  return (
+    <main className="mx-auto w-full max-w-md overflow-y-auto px-5 py-4 no-scrollbar">
+      <div className="mb-5 text-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }}
+        >
+          <p className="font-display text-xs uppercase tracking-[0.4em] text-neon-teal neon-text-teal">
+            Dawn Breaks
+          </p>
+          <h2 className="mt-1 font-display text-2xl uppercase text-ink">
+            Night Recap
+          </h2>
+        </motion.div>
+      </div>
+
+      <div className="space-y-3">
+        {narrationParts.map((line, i) => {
+          // Find if this line mentions a player
+          const mentionedPlayer = [...state.players].find(p => line.includes(p.name));
+          const isDeath = line.includes("eliminated");
+          const isSave = line.includes("saved");
+          const isDetective = line.includes("Detective");
+
+          const color = isDeath ? "pink" : isSave ? "teal" : isDetective ? "teal" : "teal";
+          const borderColor = {
+            pink: "border-neon-pink/30",
+            teal: "border-neon-teal/30",
+            orange: "border-neon-orange/30",
+          }[color];
+
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.3 }}
+              className={`glass ${borderColor} p-4`}
+            >
+              <div className="flex items-start gap-3">
+                {mentionedPlayer && (
+                  <div className="flex-shrink-0 pt-0.5">
+                    <Avatar
+                      name={mentionedPlayer.name}
+                      photoUrl={mentionedPlayer.photoUrl}
+                      size={32}
+                      ring={isDeath ? "pink" : "teal"}
+                    />
+                  </div>
+                )}
+                <p className="text-sm leading-relaxed text-muted">
+                  {line.endsWith(".") ? line : line + "."}
+                </p>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <NeonButton variant="teal" size="lg" fullWidth glow className="mt-5" onClick={onContinue}>
+        Begin Day Vote →
+      </NeonButton>
+    </main>
+  );
+}
+
+/* ================================================================
+   Day Vote — styled like the online DayScreen
+   ================================================================ */
 function VoteScreen({
   state,
   dispatch,
@@ -335,6 +459,7 @@ function VoteScreen({
 }) {
   const [votedOut, setVotedOut] = useState<string | null>(null);
   const [tie, setTie] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ uid: string; name: string; photoUrl: string | null } | null>(null);
   const living = state.players.filter((p) => p.alive);
 
   function confirm() {
@@ -343,93 +468,243 @@ function VoteScreen({
   }
 
   return (
-    <main className="mx-auto w-full max-w-md space-y-4 px-5 py-4">
-      <div className="text-center">
+    <main className="mx-auto w-full max-w-md overflow-y-auto px-5 py-4 no-scrollbar">
+      {/* Phase header */}
+      <div className="mb-4 text-center">
         <p className="font-display text-xs uppercase tracking-[0.4em] text-neon-pink neon-text">
-          Day {state.round} · Vote
+          Day Phase
         </p>
-        <h2 className="mt-1 font-display text-2xl uppercase text-ink">Who&apos;s out?</h2>
+        <h2 className="mt-1 font-display text-2xl uppercase text-ink">
+          Day {state.round} · Vote
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Discuss, accuse, then vote. A tie means nobody is eliminated.
+        </p>
       </div>
 
-      <ModSection label="Voted out (tap the player)">
-        <Picker
-          players={living}
-          selected={votedOut}
-          onSelect={(uid) => {
-            setVotedOut(uid);
-            setTie(false);
+      <div className="space-y-3">
+        {/* Player picker */}
+        <div>
+          <p className="mb-2 px-1 font-display text-[11px] uppercase tracking-wider text-muted">
+            Tap who the town voted out
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {living.map((p) => {
+              const active = votedOut === p.uid;
+              return (
+                <motion.button
+                  key={p.uid}
+                  whileTap={{ scale: 0.92 }}
+                  onClick={() => {
+                    setVotedOut(active ? null : p.uid);
+                    setTie(false);
+                    if (!active) {
+                      setConfirmTarget({ uid: p.uid, name: p.name, photoUrl: p.photoUrl });
+                    } else {
+                      setConfirmTarget(null);
+                    }
+                  }}
+                  className={cn(
+                    "glass relative flex flex-col items-center gap-1.5 p-3 transition",
+                    active && "border-neon-pink shadow-neon-pink",
+                  )}
+                >
+                  <Avatar
+                    name={p.name}
+                    photoUrl={p.photoUrl}
+                    size={56}
+                    ring={active ? "pink" : "none"}
+                  />
+                  <span className="max-w-full truncate text-xs font-semibold text-ink">
+                    {p.name}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            setTie(true);
+            setVotedOut(null);
+            setConfirmTarget(null);
           }}
-          allowNone
-        />
-      </ModSection>
-
-      <button
-        onClick={() => {
-          setTie(true);
-          setVotedOut(null);
-        }}
-        className={cn(
-          "w-full rounded-2xl border-2 p-3 text-center font-display uppercase text-sm transition",
-          tie ? "border-neon-orange bg-neon-orange/10 text-neon-orange" : "border-white/15 text-muted",
-        )}
-      >
-        It was a tie (nobody out)
-      </button>
-
-      <NeonButton variant="pink" size="lg" fullWidth glow onClick={confirm}>
-        Resolve Vote →
-      </NeonButton>
-
-      <RoleDashboard players={state.players} />
-    </main>
-  );
-}
-
-/* ---------------- Narration ---------------- */
-function NarrationScreen({
-  accent,
-  label,
-  narration,
-  onContinue,
-  continueLabel,
-}: {
-  accent: "pink" | "teal";
-  label: string;
-  narration: string;
-  onContinue: () => void;
-  continueLabel: string;
-  nextPhase: string;
-  dispatch: React.Dispatch<Parameters<typeof localMafiaReducer>[1]>;
-}) {
-  return (
-    <main className="mx-auto w-full max-w-md space-y-4 px-5 py-4">
-      <div className="text-center">
-        <p
           className={cn(
-            "font-display text-xs uppercase tracking-[0.4em]",
-            accent === "pink" ? "text-neon-pink neon-text" : "text-neon-teal neon-text-teal",
+            "w-full rounded-2xl border-2 p-3 text-center font-display uppercase text-sm transition",
+            tie ? "border-neon-orange bg-neon-orange/10 text-neon-orange" : "border-white/15 text-muted",
           )}
         >
-          {label}
-        </p>
+          It was a tie (nobody out)
+        </button>
+
+        <NeonButton variant="pink" size="lg" fullWidth glow onClick={confirm} disabled={!votedOut && !tie}>
+          Resolve Vote →
+        </NeonButton>
       </div>
-      <GlassPanel glow={accent} className="text-center">
-        <p className="text-sm leading-relaxed text-ink">{narration}</p>
-      </GlassPanel>
-      <NeonButton
-        variant={accent === "pink" ? "pink" : "teal"}
-        size="lg"
-        fullWidth
-        glow
-        onClick={onContinue}
-      >
-        {continueLabel} →
+
+      <RoleDashboard players={state.players} />
+
+      {/* Vote confirmation modal */}
+      <AnimatePresence>
+        {confirmTarget && (
+          <motion.div
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-0 z-50 flex flex-col bg-vice-night"
+          >
+            <button
+              onClick={() => { setConfirmTarget(null); setVotedOut(null); }}
+              className="absolute left-5 top-[max(1rem,env(safe-area-inset-top))] z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="relative flex-1 overflow-hidden">
+              {confirmTarget.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={confirmTarget.photoUrl} alt={confirmTarget.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-vice-dusk to-vice-midnight">
+                  <Avatar name={confirmTarget.name} photoUrl={null} size={140} />
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-6 text-center">
+                <p className="font-display text-3xl uppercase text-ink neon-text">{confirmTarget.name}</p>
+              </div>
+            </div>
+
+            <div className="bg-vice-night/95 px-6 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-2">
+              <NeonButton
+                variant="pink"
+                size="lg"
+                fullWidth
+                glow
+                onClick={() => {
+                  setConfirmTarget(null);
+                  confirm();
+                }}
+              >
+                Vote out {confirmTarget.name}
+              </NeonButton>
+              <NeonButton
+                variant="ghost"
+                fullWidth
+                onClick={() => { setConfirmTarget(null); setVotedOut(null); }}
+              >
+                Cancel
+              </NeonButton>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </main>
+  );
+}
+
+/* ================================================================
+   Day Results — dramatic narration with role reveal
+   ================================================================ */
+function DayResultsLocal({
+  state,
+  onContinue,
+}: {
+  state: ReturnType<typeof initLocalMafia>;
+  onContinue: () => void;
+}) {
+  const narrationParts = (state.lastDayNarration ?? "").split(". ").filter(Boolean);
+
+  // Find the eliminated player for dramatic reveal
+  const eliminatedPlayer = state.players.find(
+    p => !p.alive && state.lastDayNarration?.includes(p.name)
+  );
+
+  return (
+    <main className="mx-auto w-full max-w-md overflow-y-auto px-5 py-4 no-scrollbar">
+      <div className="mb-5 text-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }}
+        >
+          <p className="font-display text-xs uppercase tracking-[0.4em] text-neon-pink neon-text">
+            Verdict
+          </p>
+          <h2 className="mt-1 font-display text-2xl uppercase text-ink">
+            Vote Results
+          </h2>
+        </motion.div>
+      </div>
+
+      <div className="space-y-3">
+        {/* If someone was voted out, show dramatic reveal */}
+        {eliminatedPlayer && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <GlassPanel glow="pink" className="flex flex-col items-center gap-3 py-5">
+              <Avatar
+                name={eliminatedPlayer.name}
+                photoUrl={eliminatedPlayer.photoUrl}
+                size={72}
+                ring="pink"
+              />
+              <p className="font-display text-lg uppercase text-ink">
+                {eliminatedPlayer.name}
+              </p>
+              <div className="flex items-center gap-2">
+                <span
+                  className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider"
+                  style={{
+                    backgroundColor: ROLE_META[eliminatedPlayer.role].color === "pink" ? "rgba(255,42,109,0.15)" : ROLE_META[eliminatedPlayer.role].color === "teal" ? "rgba(5,217,232,0.15)" : "rgba(255,123,0,0.15)",
+                    color: ROLE_META[eliminatedPlayer.role].color === "pink" ? "#FF2A6D" : ROLE_META[eliminatedPlayer.role].color === "teal" ? "#05D9E8" : "#FF7B00",
+                  }}
+                >
+                  {ROLE_META[eliminatedPlayer.role].label}
+                </span>
+                <span className="text-sm text-muted">
+                  {eliminatedPlayer.role === "mafia" ? "💀 They were MAFIA" : "🕊️ They were NOT Mafia"}
+                </span>
+              </div>
+            </GlassPanel>
+          </motion.div>
+        )}
+
+        {/* Narration lines */}
+        {narrationParts.map((line, i) => {
+          if (eliminatedPlayer && line.includes(eliminatedPlayer.name) && line.includes("voted out")) return null;
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: (eliminatedPlayer ? 0.5 : 0) + i * 0.2 }}
+              className="glass border-neon-pink/30 p-4"
+            >
+              <p className="text-sm leading-relaxed text-muted">
+                {line.endsWith(".") ? line : line + "."}
+              </p>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <NeonButton variant="pink" size="lg" fullWidth glow className="mt-5" onClick={onContinue}>
+        Next Night →
       </NeonButton>
     </main>
   );
 }
 
-/* ---------------- End ---------------- */
+/* ================================================================
+   End Screen — matches online EndScreen quality
+   ================================================================ */
 function LocalEndScreen({
   state,
   onRestart,
@@ -444,89 +719,131 @@ function LocalEndScreen({
   const winnerLabel =
     win.winner === "mafia" ? "Mafia Wins" : win.winner === "civilian" ? "Town Wins" : "Jester Wins";
 
+  // Group losers by team
+  const teams = ["mafia", "civilian", "neutral"] as const;
+  const loserGroups = teams
+    .map((t) => ({
+      team: t,
+      label: t === "mafia" ? "Mafia" : t === "civilian" ? "Town" : "Neutral",
+      members: losers.filter((p) => ROLE_META[p.role].team === t),
+    }))
+    .filter((g) => g.members.length > 0);
+
   return (
-    <main className="mx-auto w-full max-w-md space-y-4 px-5 py-4">
-      <div className="text-center">
-        <p className="font-display text-5xl uppercase gradient-title">
+    <main className="mx-auto w-full max-w-md overflow-y-auto px-5 py-4 pb-10 no-scrollbar">
+      {/* Hero result */}
+      <div className="mb-6 text-center">
+        <motion.p
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }}
+          className="font-display text-5xl uppercase gradient-title"
+        >
           Game Over
-        </p>
-        <p className="mt-2 font-display text-lg uppercase text-neon-orange neon-text">
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-2 font-display text-lg uppercase text-neon-orange neon-text"
+        >
           {winnerLabel}
-        </p>
+        </motion.p>
         <p className="mt-1 text-sm text-muted">{win.reason}</p>
       </div>
 
-      <div>
-        <h3 className="mb-2 px-1 font-display text-xs uppercase tracking-[0.3em] text-neon-pink">
-          Winners
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
-          {winners.map((p) => (
-            <GlassPanel key={p.uid} glow="pink" className="flex flex-col items-center gap-1 py-3">
-              <Avatar name={p.name} photoUrl={p.photoUrl} size={56} ring="pink" />
+      {/* Winners */}
+      <h3 className="mb-2 px-1 font-display text-xs uppercase tracking-[0.3em] text-neon-pink">
+        Winners
+      </h3>
+      <div className="mb-6 grid grid-cols-2 gap-3">
+        {winners.map((p, i) => (
+          <motion.div
+            key={p.uid}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 + i * 0.08 }}
+          >
+            <GlassPanel glow="pink" className="flex flex-col items-center gap-2 py-4">
+              <Avatar name={p.name} photoUrl={p.photoUrl} size={72} ring="pink" />
               <p className="text-center font-display uppercase text-ink">{p.name}</p>
-              <span className="text-[10px] uppercase text-muted">{ROLE_META[p.role].label}</span>
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                {ROLE_META[p.role].label}
+              </span>
             </GlassPanel>
-          ))}
-        </div>
+          </motion.div>
+        ))}
       </div>
 
-      {losers.length > 0 && (
-        <div>
-          <h3 className="mb-2 px-1 font-display text-xs uppercase tracking-[0.3em] text-muted">
-            The Rest
-          </h3>
+      {/* Losers grouped by team */}
+      {loserGroups.map((group) => (
+        <div key={group.team} className="mb-5">
+          <h4 className="mb-2 px-1 font-display text-xs uppercase tracking-[0.3em] text-muted">
+            {group.label} Team
+          </h4>
           <div className="space-y-2">
-            {losers.map((p) => (
+            {group.members.map((p) => (
               <GlassPanel key={p.uid} className="flex items-center gap-3">
-                <Avatar name={p.name} photoUrl={p.photoUrl} size={36} />
+                <Avatar name={p.name} photoUrl={p.photoUrl} size={40} />
                 <span className="flex-1 truncate text-ink">{p.name}</span>
-                <span className="text-[10px] uppercase text-muted">{ROLE_META[p.role].label}</span>
+                <span className="text-[10px] uppercase tracking-wide text-muted">
+                  {ROLE_META[p.role].label}
+                </span>
               </GlassPanel>
             ))}
           </div>
         </div>
-      )}
+      ))}
 
-      <NeonButton variant="teal" fullWidth onClick={onRestart}>
-        Play Again
-      </NeonButton>
+      {/* All roles reveal */}
+      <RoleDashboard players={state.players} />
+
+      {/* Actions */}
+      <div className="mt-6 flex flex-col gap-2">
+        <NeonButton variant="teal" fullWidth onClick={onRestart}>
+          Play Again
+        </NeonButton>
+      </div>
     </main>
   );
 }
 
-/* ---------------- Shared bits ---------------- */
-function ModSection({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="mb-2 px-1 font-display text-[11px] uppercase tracking-wider text-muted">{label}</p>
-      {children}
-    </div>
-  );
-}
-
+/* ================================================================
+   Shared UI components
+   ================================================================ */
 function Picker({
   players,
   selected,
   onSelect,
   allowNone,
+  accent = "pink",
+  disabledUids = [],
 }: {
   players: MafiaPlayerLite[];
   selected: string | null;
   onSelect: (uid: string | null) => void;
   allowNone?: boolean;
+  accent?: "pink" | "teal";
+  disabledUids?: string[];
 }) {
   return (
     <div className="flex flex-wrap gap-2">
       {players.map((p) => {
         const active = selected === p.uid;
+        const disabled = disabledUids.includes(p.uid);
         return (
           <button
             key={p.uid}
+            disabled={disabled}
             onClick={() => onSelect(active && allowNone ? null : p.uid)}
             className={cn(
               "flex items-center gap-2 rounded-2xl border-2 px-3 py-2 transition",
-              active ? "border-neon-pink bg-neon-pink/10" : "border-white/10",
+              active
+                ? accent === "teal"
+                  ? "border-neon-teal bg-neon-teal/10"
+                  : "border-neon-pink bg-neon-pink/10"
+                : "border-white/10",
+              disabled && "opacity-30 grayscale cursor-not-allowed",
             )}
           >
             <Avatar name={p.name} photoUrl={p.photoUrl} size={28} />
