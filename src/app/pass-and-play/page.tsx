@@ -36,7 +36,7 @@ export default function PassAndPlayPage() {
       )}
       <AnimatePresence mode="wait">
         <motion.div
-          key={state.phase + state.round + state.revealIndex}
+          key={state.phase + state.round}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
@@ -46,6 +46,7 @@ export default function PassAndPlayPage() {
           {state.phase === "setup" && <SetupScreen onStart={(p, c) => dispatch({ type: "START", players: p, composition: c })} />}
           {state.phase === "reveal" && (
             <RevealScreenLocal
+              key={state.revealIndex}
               players={state.players}
               index={state.revealIndex}
               onNext={() => dispatch({ type: "REVEAL_NEXT" })}
