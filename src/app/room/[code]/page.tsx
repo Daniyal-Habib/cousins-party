@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { GradientBackdrop } from "@/components/theme/GradientBackdrop";
@@ -12,6 +12,9 @@ import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { useUser } from "@/lib/hooks/useUser";
 import { useRoom } from "@/lib/hooks/useRoom";
 import { kickPlayer, leaveRoom } from "@/lib/rooms/roomService";
+import { uploadProfilePhoto } from "@/lib/storage/uploadProfilePhoto";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type { GameType } from "@/lib/types";
 import type { RoleComposition } from "@/games/mafia/setup";
 
@@ -30,14 +33,34 @@ export default function RoomPage() {
   const uid = profile?.email ?? null;
   const { room, players, me, host, exists } = useRoom(code, uid, profile);
 
-  const [showCanvas, setShowCanvas] = useState(true);
+  const [fullScreenCanvas, setFullScreenCanvas] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showKick, setShowKick] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const isHost = me?.isHost ?? false;
   const canStart = Boolean(room && players.length >= 4);
+
+  const defaultRoles = {
+    mafia: players.length >= 9 ? 3 : players.length >= 6 ? 2 : 1,
+    doctor: 1,
+    detective: 1,
+    sheriff: players.length >= 6 ? 1 : 0,
+    jester: players.length >= 6 ? 1 : 0,
+  };
+  const roles = (room?.settings?.roles as RoleComposition | undefined) ?? defaultRoles;
+
+  async function updateRole(role: keyof RoleComposition, value: number) {
+    if (!isHost || !db) return;
+    await updateDoc(doc(db, "rooms", code), {
+      "settings.roles": {
+        ...roles,
+        [role]: value,
+      },
+    });
+  }
 
   async function copyCode() {
     try {
@@ -54,28 +77,13 @@ export default function RoomPage() {
     router.replace("/home");
   }
 
-  const [starting, setStarting] = useState(false);
-
   async function handleStart() {
-    if (!room?.gameType || starting) return;
-    if (room.gameType === "mafia") {
-      setShowSettings(true);
-    } else {
-      setStarting(true);
-      const { doc, updateDoc } = await import("firebase/firestore");
-      const { db } = await import("@/lib/firebase");
-      if (db) await updateDoc(doc(db, "rooms", code), { status: "playing" });
-    }
-  }
-
-  async function confirmStart(composition: RoleComposition) {
-    if (!uid || !room) return;
+    if (!room?.gameType || starting || !canStart) return;
+    setStarting(true);
     if (room.gameType === "mafia") {
       const { startMafiaGame } = await import("@/games/mafia/mafiaService");
-      await startMafiaGame(code, uid, players, composition);
+      await startMafiaGame(code, uid!, players, roles);
     }
-    const { doc, updateDoc } = await import("firebase/firestore");
-    const { db } = await import("@/lib/firebase");
     if (db) await updateDoc(doc(db, "rooms", code), { status: "playing" });
   }
 
@@ -154,10 +162,10 @@ export default function RoomPage() {
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowCanvas((s) => !s)}
+                onClick={() => setFullScreenCanvas(true)}
                 className="rounded-xl bg-white/5 px-3 py-2 text-xs font-bold uppercase text-ink active:scale-95"
               >
-                {showCanvas ? "Players" : "Canvas"}
+                Canvas
               </button>
               {isHost && (
                 <button
@@ -171,50 +179,84 @@ export default function RoomPage() {
           </GlassPanel>
         </div>
 
-        {/* Main area: players grid or canvas */}
-        <div className="relative flex-1 overflow-hidden px-5 pb-3">
-          {showCanvas ? (
-            <div className="h-full overflow-hidden rounded-3xl border border-white/10">
-              <LiveCanvas code={code} enabled={room.status === "waiting"} />
+        {/* Main area: players grid and roles */}
+        <div className="relative flex-1 overflow-y-auto px-5 pb-4 no-scrollbar">
+          <div className="grid grid-cols-2 content-start gap-3">
+            <div className="col-span-2 mb-1 flex items-center justify-between px-1 font-display text-xs uppercase tracking-[0.3em] text-muted">
+              <span>Players · {players.length}</span>
             </div>
-          ) : (
-            <div className="grid h-full grid-cols-2 content-start gap-3 overflow-y-auto pb-4">
-              <div className="col-span-2 mb-1 px-1 font-display text-xs uppercase tracking-[0.3em] text-muted">
-                Players · {players.length}
-              </div>
-              {players.map((p) => {
-                const itsMe = p.uid === uid;
-                return (
-                  <motion.div
-                    key={p.uid}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="glass flex flex-col items-center gap-1 p-3"
-                  >
-                    <div className="relative">
-                      <Avatar name={p.name} photoUrl={p.photoUrl} size={56} ring={p.isHost ? "pink" : "teal"} />
-                      {!p.isOnline && (
-                        <span className="absolute -right-1 bottom-1 h-3 w-3 rounded-full border-2 border-vice-night bg-muted" />
-                      )}
-                    </div>
-                    <p className="max-w-full truncate text-sm font-semibold text-ink">
-                      {p.name}
-                      {itsMe && <span className="ml-1 text-[10px] text-neon-teal">you</span>}
-                    </p>
-                    <div className="flex gap-1 text-[9px] uppercase tracking-wider text-muted">
-                      {p.isHost && <span className="text-neon-pink">Host</span>}
-                      {p.isSpectator && <span className="text-neon-orange">Watching</span>}
-                    </div>
-                  </motion.div>
-                );
-              })}
+            {players.map((p) => {
+              const itsMe = p.uid === uid;
+              return (
+                <motion.div
+                  key={p.uid}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="glass relative flex flex-col items-center gap-1 p-3"
+                >
+                  {itsMe && (
+                    <button
+                      onClick={() => setShowEditProfile(true)}
+                      className="absolute right-2 top-2 rounded-full bg-white/10 p-1.5 text-muted hover:text-white"
+                      aria-label="Edit Profile"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  )}
+                  <div className="relative">
+                    <Avatar name={p.name} photoUrl={p.photoUrl} size={56} ring={p.isHost ? "pink" : "teal"} />
+                    {!p.isOnline && (
+                      <span className="absolute -right-1 bottom-1 h-3 w-3 rounded-full border-2 border-vice-night bg-muted" />
+                    )}
+                  </div>
+                  <p className="max-w-full truncate text-sm font-semibold text-ink">
+                    {p.name}
+                    {itsMe && <span className="ml-1 text-[10px] text-neon-teal">you</span>}
+                  </p>
+                  <div className="flex gap-1 text-[9px] uppercase tracking-wider text-muted">
+                    {p.isHost && <span className="text-neon-pink">Host</span>}
+                    {p.isSpectator && <span className="text-neon-orange">Watching</span>}
+                  </div>
+                </motion.div>
+              );
+            })}
 
-              {players.length < 4 && (
-                <div className="col-span-2 glass flex flex-col items-center justify-center gap-1 border-dashed py-6 text-center">
-                  <p className="font-display text-sm uppercase text-ink">Need more cousins</p>
-                  <p className="text-xs text-muted">Minimum 4 to start. Share the code!</p>
-                </div>
-              )}
+            {players.length < 4 && (
+              <div className="col-span-2 glass flex flex-col items-center justify-center gap-1 border-dashed py-6 text-center">
+                <p className="font-display text-sm uppercase text-ink">Need more cousins</p>
+                <p className="text-xs text-muted">Minimum 4 to start. Share the code!</p>
+              </div>
+            )}
+          </div>
+
+          {room.gameType === "mafia" && (
+            <div className="mt-6">
+              <div className="mb-3 px-1 font-display text-xs uppercase tracking-[0.3em] text-muted">
+                Role Settings
+              </div>
+              <div className="space-y-2">
+                <RoleCounter label="Mafia" value={roles.mafia} onChange={(v) => updateRole("mafia", v)} isHost={isHost} />
+                <RoleCounter label="Doctor" value={roles.doctor} onChange={(v) => updateRole("doctor", v)} isHost={isHost} />
+                <RoleCounter label="Detective" value={roles.detective} onChange={(v) => updateRole("detective", v)} isHost={isHost} />
+                <RoleCounter label="Sheriff" value={roles.sheriff} onChange={(v) => updateRole("sheriff", v)} isHost={isHost} />
+                <RoleCounter label="Jester" value={roles.jester} onChange={(v) => updateRole("jester", v)} isHost={isHost} />
+                
+                {(() => {
+                  const specialCount = roles.mafia + roles.doctor + roles.detective + roles.sheriff + roles.jester;
+                  const civCount = players.length - specialCount;
+                  return (
+                    <>
+                      <div className="mt-2 flex items-center justify-between rounded-2xl bg-white/5 p-3 opacity-50">
+                        <span className="font-display text-sm uppercase text-ink">Civilians</span>
+                        <span className="w-4 text-center font-bold text-ink">{civCount}</span>
+                      </div>
+                      {civCount < 0 && <p className="mt-2 text-center text-sm text-neon-pink">Too many special roles!</p>}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           )}
         </div>
@@ -234,22 +276,39 @@ export default function RoomPage() {
       </main>
 
       {/* Kick / manage modal */}
+      {/* Full Screen Canvas Modal */}
       <AnimatePresence>
-        {showKick && (
-          <KickModal
-            players={players}
-            selfUid={uid ?? ""}
-            onClose={() => setShowKick(false)}
-            onKick={async (targetUid) => {
-              await kickPlayer(code, targetUid);
-            }}
-          />
+        {fullScreenCanvas && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="fixed inset-0 z-50 flex flex-col bg-vice-night"
+          >
+            <div className="absolute right-5 top-[max(1rem,env(safe-area-inset-top))] z-50">
+              <button
+                onClick={() => setFullScreenCanvas(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <LiveCanvas code={code} enabled={room.status === "waiting"} />
+            </div>
+          </motion.div>
         )}
-        {showSettings && (
-          <SettingsModal
-            playerCount={players.filter((p) => !p.isSpectator).length}
-            onClose={() => setShowSettings(false)}
-            onConfirm={(comp) => confirmStart(comp)}
+      </AnimatePresence>
+
+      {/* Edit Profile Modal */}
+      <AnimatePresence>
+        {showEditProfile && me && (
+          <EditProfileModal
+            player={me}
+            code={code}
+            onClose={() => setShowEditProfile(false)}
           />
         )}
       </AnimatePresence>
@@ -310,47 +369,85 @@ function KickModal({
   );
 }
 
-function SettingsModal({
-  playerCount,
-  onClose,
-  onConfirm,
-}: {
-  playerCount: number;
-  onClose: () => void;
-  onConfirm: (comp: RoleComposition) => Promise<void>;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [mafia, setMafia] = useState(playerCount >= 9 ? 3 : playerCount >= 6 ? 2 : 1);
-  const [doctor, setDoctor] = useState(1);
-  const [detective, setDetective] = useState(1);
-  const [sheriff, setSheriff] = useState(playerCount >= 6 ? 1 : 0);
-  const [jester, setJester] = useState(playerCount >= 6 ? 1 : 0);
-
-  const specialCount = mafia + doctor + detective + sheriff + jester;
-  const civCount = playerCount - specialCount;
-  const valid = civCount >= 0;
-
-  function RoleCounter({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-    return (
-      <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
-        <span className="font-display text-sm uppercase text-ink">{label}</span>
-        <div className="flex items-center gap-3">
+function RoleCounter({ label, value, onChange, isHost }: { label: string; value: number; onChange: (v: number) => void; isHost: boolean }) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl bg-white/5 p-3">
+      <span className="font-display text-sm uppercase text-ink">{label}</span>
+      <div className="flex items-center gap-3">
+        {isHost && (
           <button
             onClick={() => onChange(Math.max(0, value - 1))}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 active:scale-95"
           >
             -
           </button>
-          <span className="w-4 text-center font-bold text-ink">{value}</span>
+        )}
+        <span className="w-4 text-center font-bold text-ink">{value}</span>
+        {isHost && (
           <button
             onClick={() => onChange(value + 1)}
             className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 active:scale-95"
           >
             +
           </button>
-        </div>
+        )}
       </div>
-    );
+    </div>
+  );
+}
+
+function EditProfileModal({
+  player,
+  code,
+  onClose,
+}: {
+  player: { uid: string; name: string; photoUrl: string | null };
+  code: string;
+  onClose: () => void;
+}) {
+  const { updateProfile } = useUser();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [editName, setEditName] = useState(player.name);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const url = await uploadProfilePhoto(player.uid, file);
+      // Update globally
+      await updateProfile({ photoUrl: url });
+      // Update room specifically
+      if (db) {
+        await updateDoc(doc(db, "rooms", code, "players", player.uid), { photoUrl: url });
+      }
+      setMsg("Photo updated!");
+    } catch (err) {
+      console.error(err);
+      setMsg("Couldn't upload photo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveName() {
+    const n = editName.trim();
+    if (n.length < 2) return setMsg("Name too short.");
+    setBusy(true);
+    try {
+      await updateProfile({ name: n });
+      if (db) {
+        await updateDoc(doc(db, "rooms", code, "players", player.uid), { name: n });
+      }
+      setMsg("Saved!");
+    } catch {
+      setMsg("Failed to save.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -370,39 +467,39 @@ function SettingsModal({
         className="glass w-full max-w-md rounded-t-4xl rounded-b-none p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-white/20" />
-        <h3 className="mb-1 font-display text-lg uppercase text-ink">Role Settings</h3>
-        <p className="mb-4 text-sm text-muted">Total players: {playerCount}</p>
+        <h3 className="mb-4 text-center font-display text-lg uppercase text-ink">Edit Profile</h3>
         
-        <div className="max-h-[50vh] space-y-2 overflow-y-auto pb-4">
-          <RoleCounter label="Mafia" value={mafia} onChange={setMafia} />
-          <RoleCounter label="Doctor" value={doctor} onChange={setDoctor} />
-          <RoleCounter label="Detective" value={detective} onChange={setDetective} />
-          <RoleCounter label="Sheriff" value={sheriff} onChange={setSheriff} />
-          <RoleCounter label="Jester" value={jester} onChange={setJester} />
-          
-          <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/5 p-3 opacity-50">
-            <span className="font-display text-sm uppercase text-ink">Civilians</span>
-            <span className="w-4 text-center font-bold text-ink">{civCount}</span>
+        <div className="flex flex-col items-center">
+          <button onClick={() => fileRef.current?.click()} className="relative active:scale-95 transition">
+            <Avatar name={player.name} photoUrl={player.photoUrl} size={80} ring="pink" />
+            <span className="absolute -bottom-1 -right-1 rounded-full bg-neon-pink-orange p-1.5 shadow-neon-pink">
+              <svg viewBox="0 0 24 24" className="h-3 w-3 text-white" fill="currentColor">
+                <path d="M12 5l7 7-2 2-3-3v6h-4v-6l-3 3-2-2z" />
+              </svg>
+            </span>
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhoto} />
+          {busy && <p className="mt-2 text-xs text-neon-teal">Processing…</p>}
+          {msg && !busy && <p className="mt-2 text-xs text-neon-teal">{msg}</p>}
+        </div>
+
+        <div className="mt-6 mb-6">
+          <label className="mb-1 block font-display text-[11px] uppercase tracking-wider text-muted">Display Name</label>
+          <div className="flex gap-2">
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="flex-1 rounded-xl border border-white/15 bg-vice-night/60 px-4 py-2 text-ink outline-none focus:border-neon-teal"
+            />
+            <NeonButton variant="teal" size="sm" onClick={saveName} disabled={busy}>
+              Save
+            </NeonButton>
           </div>
-          {!valid && <p className="text-center text-sm text-neon-pink mt-2">Too many special roles!</p>}
         </div>
-        <div className="flex gap-3">
-          <NeonButton variant="ghost" className="flex-1" onClick={onClose} disabled={loading}>
-            Cancel
-          </NeonButton>
-          <NeonButton
-            variant="pink"
-            className="flex-1"
-            glow
-            disabled={!valid || loading}
-            onClick={async () => {
-              setLoading(true);
-              await onConfirm({ mafia, doctor, detective, sheriff, jester });
-            }}
-          >
-            {loading ? "Starting..." : "Start Game"}
-          </NeonButton>
-        </div>
+
+        <NeonButton variant="ghost" fullWidth onClick={onClose}>
+          Done
+        </NeonButton>
       </motion.div>
     </motion.div>
   );
