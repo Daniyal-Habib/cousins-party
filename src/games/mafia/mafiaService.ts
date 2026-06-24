@@ -338,11 +338,15 @@ export async function forceEndDay(code: string): Promise<void> {
 export async function sweepStalePlayers(code: string, graceMs = 60_000): Promise<void> {
   if (!db) return;
   const database = db;
-  const { getDocs, collection: col } = await import("firebase/firestore");
-  const playerSnap = await getDocs(col(database, "rooms", code, "players"));
+  const { get, ref } = await import("firebase/database");
+  const { rtdb } = await import("@/lib/firebase");
+  if (!rtdb) return;
+  
+  const playerSnap = await get(ref(rtdb, `rooms/${code}/players`));
   const now = Date.now();
-  const staleUids = playerSnap.docs
-    .map((d) => d.data() as { uid: string; lastSeen: number; isOnline: boolean })
+  const val = playerSnap.val() as Record<string, { uid: string; lastSeen: number; isOnline: boolean }> | null;
+  
+  const staleUids = Object.values(val || {})
     .filter((p) => !p.isOnline && now - (p.lastSeen ?? 0) > graceMs)
     .map((p) => p.uid);
   if (staleUids.length === 0) return;

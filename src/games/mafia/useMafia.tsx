@@ -3,8 +3,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ref, update, serverTimestamp as rtdbNow } from "firebase/database";
+import { db, rtdb } from "@/lib/firebase";
+import { rtdbKey } from "@/lib/rtdbKey";
 import { useUser } from "@/lib/hooks/useUser";
 import { subscribeMafia } from "./mafiaService";
 import type { MafiaGameState } from "./state";
@@ -77,10 +78,10 @@ export function useMafia() {
  * should receive the read-only spectator view.
  */
 export function setSpectator(code: string, uid: string) {
-  if (!db) return;
-  updateDoc(doc(db, "rooms", code, "players", uid), {
+  if (!rtdb) return;
+  update(ref(rtdb, `rooms/${code}/players/${rtdbKey(uid)}`), {
     isSpectator: true,
-    updatedAt: serverTimestamp(),
+    updatedAt: rtdbNow(),
   }).catch(() => {});
 }
 

@@ -8,7 +8,7 @@ import {
   deleteDoc,
   collection,
 } from "firebase/firestore";
-import { onDisconnect, onValue, ref, serverTimestamp as rtdbNow } from "firebase/database";
+import { onDisconnect, onValue, ref, serverTimestamp as rtdbNow, set, get, remove, update } from "firebase/database";
 import { db, rtdb } from "@/lib/firebase";
 import { rtdbKey } from "@/lib/rtdbKey";
 import type { GameType, Room, RoomPlayer } from "@/lib/types";
@@ -43,15 +43,17 @@ export async function createRoom(params: {
     createdAt: now,
   };
   await setDoc(doc(db, "rooms", params.code), room);
-  await setDoc(doc(db, "rooms", params.code, "players", params.hostUid), {
-    uid: params.hostUid,
-    name: params.hostName,
-    photoUrl: params.hostPhoto,
-    isHost: true,
-    isOnline: true,
-    lastSeen: now,
-    isSpectator: false,
-  } satisfies RoomPlayer);
+  if (rtdb) {
+    await set(ref(rtdb, `rooms/${params.code}/players/${rtdbKey(params.hostUid)}`), {
+      uid: params.hostUid,
+      name: params.hostName,
+      photoUrl: params.hostPhoto,
+      isHost: true,
+      isOnline: true,
+      lastSeen: rtdbNow(),
+      isSpectator: false,
+    });
+  }
 }
 
 /** Add the signed-in user as a player in a room. Throws if room doesn't exist. */
@@ -66,53 +68,59 @@ export async function joinRoom(params: {
   const snap = await getDoc(roomRef);
   if (!snap.exists()) throw new Error("Room not found. Check the code.");
 
-  await setDoc(doc(db, "rooms", params.code, "players", params.uid), {
-    uid: params.uid,
-    name: params.name,
-    photoUrl: params.photo,
-    isHost: false,
-    isOnline: true,
-    lastSeen: Date.now(),
-    isSpectator: false,
-  } satisfies RoomPlayer);
+  if (rtdb) {
+    await set(ref(rtdb, `rooms/${params.code}/players/${rtdbKey(params.uid)}`), {
+      uid: params.uid,
+      name: params.name,
+      photoUrl: params.photo,
+      isHost: false,
+      isOnline: true,
+      lastSeen: rtdbNow(),
+      isSpectator: false,
+    });
+  }
 }
 
 /** Remove a player from a room. Host removal triggers migration on the way out. */
 export async function leaveRoom(code: string, uid: string, isHost: boolean): Promise<void> {
-  if (!db) return;
-  await deleteDoc(doc(db, "rooms", code, "players", uid));
+  if (rtdb) {
+    await remove(ref(rtdb, `rooms/${code}/players/${rtdbKey(uid)}`));
+  }
   // If the host leaves, promote the next player before the room notices.
   if (isHost) await migrateHost(code, uid);
 }
 
 /** Host kicks a player. */
 export async function kickPlayer(code: string, targetUid: string): Promise<void> {
-  if (!db) return;
-  await deleteDoc(doc(db, "rooms", code, "players", targetUid));
+  if (rtdb) {
+    await remove(ref(rtdb, `rooms/${code}/players/${rtdbKey(targetUid)}`));
+  }
 }
 
 /** Promote the earliest-still-online player to host, if needed. */
 export async function migrateHost(code: string, leavingHostUid: string): Promise<void> {
-  if (!db) return;
-  // Read current players ordered by join time (doc id is stable; we use lastSeen asc).
+  if (!db || !rtdb) return;
   const snap = await getDoc(doc(db, "rooms", code));
   if (!snap.exists()) return;
   const room = snap.data() as Room;
   if (room.hostUid !== leavingHostUid) return; // already migrated
 
-  // Use onSnapshot-free read of players.
-  const playersCol = await import("firebase/firestore").then((m) =>
-    m.getDocs(m.collection(db!, "rooms", code, "players")),
-  );
-  const players = playersCol.docs
-    .map((d) => d.data() as RoomPlayer)
+  // Read current players from RTDB
+  const rtdbSnap = await get(ref(rtdb, `rooms/${code}/players`));
+  if (!rtdbSnap.exists()) {
+    await updateDoc(doc(db, "rooms", code), { status: "ended" });
+    return;
+  }
+
+  const playersDict = rtdbSnap.val() as Record<string, RoomPlayer>;
+  const players = Object.values(playersDict)
     .filter((p) => p.uid !== leavingHostUid && p.isOnline)
     .sort((a, b) => a.lastSeen - b.lastSeen);
 
   const next = players[0];
   if (next) {
     await updateDoc(doc(db, "rooms", code), { hostUid: next.uid });
-    await updateDoc(doc(db, "rooms", code, "players", next.uid), { isHost: true });
+    await update(ref(rtdb, `rooms/${code}/players/${rtdbKey(next.uid)}`), { isHost: true });
   } else {
     // Nobody left — mark room ended so it can be cleaned.
     await updateDoc(doc(db, "rooms", code), { status: "ended" });
@@ -121,35 +129,33 @@ export async function migrateHost(code: string, leavingHostUid: string): Promise
 
 /** Mark a player online/offline via presence; writes isOnline + lastSeen. */
 export function attachPresence(code: string, uid: string): () => void {
-  if (!db) return () => {};
-  const playerRef = doc(db, "rooms", code, "players", uid);
+  if (!rtdb) return () => {};
 
-  // Heartbeat: periodically bump lastSeen so others can detect staleness.
-  const heartbeat = setInterval(() => {
-    updateDoc(playerRef, { isOnline: true, lastSeen: Date.now() }).catch(() => {});
-  }, 15000);
-  updateDoc(playerRef, { isOnline: true, lastSeen: Date.now() }).catch(() => {});
+  const connectedRef = ref(rtdb, ".info/connected");
+  const playerRef = ref(rtdb, `rooms/${code}/players/${rtdbKey(uid)}`);
 
-  // Realtime DB disconnect signal -> flip isOnline false on the player doc.
   let rtUnsub = () => {};
-  if (rtdb) {
-    // uid is the email; sanitize it since RTDB keys can't contain ". # $ [ ]".
-    const conn = ref(rtdb, `presence/${code}/${rtdbKey(uid)}`);
-    onDisconnect(conn).set({ online: false, at: rtdbNow() });
-    onValue(conn, () => {}); // open the listener so onDisconnect arms
-    rtUnsub = () => onDisconnect(conn).cancel();
-  }
 
-  return () => {
-    clearInterval(heartbeat);
-    rtUnsub();
+  const unsub = onValue(connectedRef, (snap) => {
+    if (snap.val() === true) {
+      // When connection drops, mark as offline
+      onDisconnect(playerRef).update({ isOnline: false, lastSeen: rtdbNow() });
+      // While connected, mark as online
+      update(playerRef, { isOnline: true, lastSeen: rtdbNow() }).catch(() => {});
+    }
+  });
+
+  rtUnsub = () => {
+    unsub();
+    onDisconnect(playerRef).cancel();
   };
+
+  return rtUnsub;
 }
 
 /** Soft-delete room when empty. */
 export async function deleteRoomIfEmpty(code: string): Promise<void> {
-  if (!db) return;
-  const { getDocs } = await import("firebase/firestore");
-  const snap = await getDocs(collection(db, "rooms", code, "players"));
-  if (snap.empty) await deleteDoc(doc(db, "rooms", code));
+  if (!db || !rtdb) return;
+  const snap = await get(ref(rtdb, `rooms/${code}/players`));
+  if (!snap.exists()) await deleteDoc(doc(db, "rooms", code));
 }

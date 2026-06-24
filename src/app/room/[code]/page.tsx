@@ -14,7 +14,9 @@ import { useRoom } from "@/lib/hooks/useRoom";
 import { kickPlayer, leaveRoom } from "@/lib/rooms/roomService";
 import { uploadProfilePhoto } from "@/lib/storage/uploadProfilePhoto";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ref, update } from "firebase/database";
+import { db, rtdb } from "@/lib/firebase";
+import { rtdbKey } from "@/lib/rtdbKey";
 import type { GameType } from "@/lib/types";
 import type { RoleComposition } from "@/games/mafia/setup";
 
@@ -434,8 +436,8 @@ function EditProfileModal({
       // Update globally
       await updateProfile({ photoUrl: url });
       // Update room specifically
-      if (db) {
-        await updateDoc(doc(db, "rooms", code, "players", player.uid), { photoUrl: url });
+      if (rtdb) {
+        await update(ref(rtdb, `rooms/${code}/players/${rtdbKey(player.uid)}`), { photoUrl: url });
       }
       setMsg("Photo updated!");
     } catch (err) {
@@ -452,8 +454,8 @@ function EditProfileModal({
     setBusy(true);
     try {
       await updateProfile({ name: n });
-      if (db) {
-        await updateDoc(doc(db, "rooms", code, "players", player.uid), { name: n });
+      if (rtdb) {
+        await update(ref(rtdb, `rooms/${code}/players/${rtdbKey(player.uid)}`), { name: n });
       }
       setMsg("Saved!");
     } catch {

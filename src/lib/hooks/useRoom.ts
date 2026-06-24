@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  collection,
   onSnapshot,
   doc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { onValue, ref } from "firebase/database";
+import { db, rtdb } from "@/lib/firebase";
 import { attachPresence, joinRoom } from "@/lib/rooms/roomService";
 import type { Room, RoomPlayer } from "@/lib/types";
 
@@ -38,10 +38,22 @@ export function useRoom(
       setRoom(snap.exists() ? (snap.data() as Room) : null);
       setExists(snap.exists());
     });
-    const unsubPlayers = onSnapshot(
-      collection(db, "rooms", code, "players"),
-      (snap) => setPlayers(snap.docs.map((d) => d.data() as RoomPlayer)),
-    );
+
+    let unsubPlayers = () => {};
+    if (rtdb) {
+      unsubPlayers = onValue(
+        ref(rtdb, `rooms/${code}/players`),
+        (snap) => {
+          const val = snap.val() as Record<string, RoomPlayer> | null;
+          if (val) {
+            setPlayers(Object.values(val));
+          } else {
+            setPlayers([]);
+          }
+        }
+      );
+    }
+
     return () => {
       unsubRoom();
       unsubPlayers();

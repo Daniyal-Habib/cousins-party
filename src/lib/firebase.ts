@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
-import { getDatabase, type Database } from "firebase/database";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getFirestore, connectFirestoreEmulator, type Firestore } from "firebase/firestore";
+import { getDatabase, connectDatabaseEmulator, type Database } from "firebase/database";
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from "firebase/storage";
 
 /**
  * Firebase init. Reads config from public env vars (NEXT_PUBLIC_*) so it runs
@@ -35,6 +35,12 @@ if (firebaseConfigured) {
   firestore = getFirestore(app);
   rtdb = getDatabase(app);
   storage = getStorage(app);
+
+  if (process.env.NEXT_PUBLIC_USE_EMULATOR === "true") {
+    connectFirestoreEmulator(firestore, "127.0.0.1", 8080);
+    connectDatabaseEmulator(rtdb, "127.0.0.1", 9000);
+    connectStorageEmulator(storage, "127.0.0.1", 9199);
+  }
 }
 
 export { app, firestore as db, rtdb, storage };
