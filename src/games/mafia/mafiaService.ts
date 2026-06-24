@@ -48,7 +48,7 @@ export async function startMafiaGame(
 
   const composition = compositionOverride ?? defaultComposition(living.length);
   const assigned = assignRoles(
-    living.map((p) => ({ uid: p.uid, name: p.name, photoUrl: p.photoUrl })),
+    living.map((p) => ({ uid: p.uid, name: p.name, photoUrl: p.photoUrl ?? null })),
     composition,
   );
   const state = createMafiaState(hostUid, assigned);
