@@ -58,12 +58,14 @@ function MafiaNight() {
     (p) => p.role === "mafia" && p.uid !== me!.uid,
   );
   const myVote = state!.nightActions.mafiaVotes?.[me!.uid];
-  const voted = Boolean(myVote);
+  const allVotes = Object.values(state!.nightActions.mafiaVotes ?? {});
+  const livingMafia = state!.players.filter((p) => p.alive && p.role === "mafia");
+  const allVoted = allVotes.length === livingMafia.length;
+  const isDisagreement = allVotes.length > 0 && new Set(allVotes).size > 1;
 
-  async function confirm() {
-    if (!target) return;
-    await submitMafiaVote(code, me!.uid, target);
-    setSubmitted(true);
+  async function confirm(uid: string) {
+    setTarget(uid);
+    await submitMafiaVote(code, me!.uid, uid);
   }
 
   return (
@@ -90,39 +92,31 @@ function MafiaNight() {
       )}
 
       {/* Target grid */}
-      {!voted && !submitted && (
-        <PlayerSelectGrid
-          players={state!.players}
-          selectedUid={target}
-          onSelect={setTarget}
-          selfUid={me!.uid}
-          excludeUids={state!.players.filter((p) => p.role === "mafia").map((p) => p.uid)}
-          emptyHint="Nobody left to target."
-        />
+      {isDisagreement && (
+        <div className="mb-4 rounded-xl border border-neon-orange/30 bg-neon-orange/10 px-4 py-3 text-sm text-neon-orange">
+          <p className="font-bold uppercase tracking-wider">Disagreement</p>
+          <p className="mt-1 opacity-90">The Mafia must agree on the same target to eliminate them.</p>
+        </div>
       )}
 
-      {(voted || submitted) && (
-        <GlassPanel glow="pink" className="text-center">
+      {allVoted && !isDisagreement && (
+        <GlassPanel glow="pink" className="mb-4 text-center">
           <p className="font-display uppercase text-ink">Vote locked</p>
           <p className="mt-1 text-sm text-muted">
-            {teammates.length > 0
-              ? "Waiting for the rest of the Mafia to agree…"
-              : "Waiting for other roles to finish…"}
+            Waiting for other roles to finish…
           </p>
         </GlassPanel>
       )}
 
-      {!voted && !submitted && (
-        <NeonButton
-          variant="pink"
-          fullWidth
-          glow
-          className="mt-4"
-          disabled={!target}
-          onClick={confirm}
-        >
-          Lock in target
-        </NeonButton>
+      {(!allVoted || isDisagreement) && (
+        <PlayerSelectGrid
+          players={state!.players}
+          selectedUid={myVote || target}
+          onSelect={confirm}
+          selfUid={me!.uid}
+          excludeUids={state!.players.filter((p) => p.role === "mafia").map((p) => p.uid)}
+          emptyHint="Nobody left to target."
+        />
       )}
 
       {/* Private Mafia chat — gated by security rules from non-mafia */}

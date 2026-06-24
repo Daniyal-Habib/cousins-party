@@ -137,12 +137,12 @@ export function checkWin(
 
   const living = players.filter((p) => p.alive);
   const livingMafia = living.filter((p) => p.role === "mafia");
-  const livingCivilians = living.filter(
-    (p) => ROLE_META[p.role].team === "civilian",
+  const livingNonMafia = living.filter(
+    (p) => ROLE_META[p.role].team !== "mafia",
   );
 
-  // Mafia >= civilians (jester counts toward neither side for this check).
-  if (livingMafia.length > 0 && livingMafia.length >= livingCivilians.length) {
+  // Mafia >= Non-Mafia (Jester counts as non-mafia so Mafia must eliminate them too).
+  if (livingMafia.length > 0 && livingMafia.length >= livingNonMafia.length) {
     return teamWin(players, "mafia", "Mafia outnumbered the town.");
   }
   // All mafia dead.

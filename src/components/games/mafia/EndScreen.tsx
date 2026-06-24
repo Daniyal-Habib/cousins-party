@@ -66,7 +66,7 @@ export function EndScreen() {
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="mx-auto w-full max-w-md overflow-y-auto px-5 pb-10 pt-[max(2rem,env(safe-area-inset-top))] no-scrollbar"
+        className="mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-y-auto px-5 pb-10 pt-[max(2rem,env(safe-area-inset-top))] no-scrollbar"
       >
         {/* Hero result */}
         <div className="mb-6 text-center">

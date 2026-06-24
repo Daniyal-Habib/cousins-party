@@ -149,9 +149,10 @@ export function nightActionsReady(state: MafiaGameState): boolean {
   const detective = living.find((p) => p.role === "detective");
   const sheriff = livingSheriff(state.players);
 
-  // Mafia votes: all living mafia must submit.
-  const mafiaVotes = Object.keys(state.nightActions.mafiaVotes ?? {});
+  // Mafia votes: all living mafia must submit AND agree on the same target.
+  const mafiaVotes = Object.values(state.nightActions.mafiaVotes ?? {});
   if (mafiaVotes.length < livingMafia.length) return false;
+  if (new Set(mafiaVotes).size > 1) return false;
 
   // Doctor must submit a save (if alive).
   if (doctor && !state.nightActions.doctorSave) return false;
