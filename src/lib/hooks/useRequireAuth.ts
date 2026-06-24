@@ -11,14 +11,14 @@ import { useSession } from "@/lib/stores/session";
  */
 export function useRequireAuth() {
   const router = useRouter();
-  const { isLoggedIn } = useSession();
+  const { isLoggedIn, _hasHydrated } = useSession();
 
   // useSession uses persist middleware; reading isLoggedIn before hydration
   // returns the initial false. We rely on the redirect effect below once it
-  // flips. zustand persist hydrates synchronously from localStorage by default.
+  // flips. zustand persist hydrates asynchronously in React 18 / Next.js.
   useEffect(() => {
-    if (!isLoggedIn) router.replace("/");
-  }, [isLoggedIn, router]);
+    if (_hasHydrated && !isLoggedIn) router.replace("/");
+  }, [isLoggedIn, _hasHydrated, router]);
 
-  return { isLoggedIn };
+  return { isLoggedIn, hasHydrated: _hasHydrated };
 }

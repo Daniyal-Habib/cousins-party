@@ -13,6 +13,8 @@ interface SessionState {
   name: string | null;
   /** Set once the user has completed instant-login at least once. */
   isLoggedIn: boolean;
+  _hasHydrated: boolean;
+  setHasHydrated: (state: boolean) => void;
   login: (email: string, name: string) => void;
   logout: () => void;
 }
@@ -23,10 +25,17 @@ export const useSession = create<SessionState>()(
       email: null,
       name: null,
       isLoggedIn: false,
+      _hasHydrated: false,
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
       login: (email, name) =>
         set({ email: email.trim().toLowerCase(), name: name.trim(), isLoggedIn: true }),
       logout: () => set({ email: null, name: null, isLoggedIn: false }),
     }),
-    { name: "cgn-session" },
+    { 
+      name: "cgn-session",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      }
+    },
   ),
 );
