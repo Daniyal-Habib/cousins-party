@@ -116,7 +116,7 @@ export async function migrateHost(code: string, leavingHostUid: string): Promise
 
   const playersDict = rtdbSnap.val() as Record<string, RoomPlayer>;
   const players = Object.values(playersDict)
-    .filter((p) => p.uid !== leavingHostUid && p.isOnline)
+    .filter((p) => p.uid && p.uid !== leavingHostUid && p.isOnline)
     .sort((a, b) => a.lastSeen - b.lastSeen);
 
   const next = players[0];

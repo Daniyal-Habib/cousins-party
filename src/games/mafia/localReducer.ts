@@ -1,6 +1,6 @@
 "use client";
 
-import { assignRoles, defaultComposition } from "./setup";
+import { assignRoles, defaultComposition, type RoleComposition } from "./setup";
 import {
   resolveDay,
   checkWin,
@@ -50,7 +50,7 @@ export interface LocalMafiaState {
 }
 
 export type LocalAction =
-  | { type: "START"; players: { name: string; photoUrl: string | null }[] }
+  | { type: "START"; players: { name: string; photoUrl: string | null }[]; composition?: RoleComposition }
   | { type: "REVEAL_NEXT" }
   | { type: "REVEAL_BACK" }
   | { type: "REVEAL_DONE" }
@@ -82,7 +82,7 @@ export function localMafiaReducer(
   switch (action.type) {
     case "START": {
       if (action.players.length < 4) return state;
-      const composition = defaultComposition(action.players.length);
+      const composition = action.composition ?? defaultComposition(action.players.length);
       const assigned = assignRoles(
         action.players.map((p, i) => ({ uid: `p${i}`, ...p })),
         composition,
