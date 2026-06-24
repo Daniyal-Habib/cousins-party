@@ -67,12 +67,15 @@ export async function joinRoom(params: {
   const snap = await getDoc(roomRef);
   if (!snap.exists()) throw new Error("Room not found. Check the code.");
 
+  const room = snap.data() as Room;
+  const isHost = room.hostUid === params.uid;
+
   if (rtdb) {
-    await set(ref(rtdb, `rooms/${params.code}/players/${rtdbKey(params.uid)}`), {
+    await update(ref(rtdb, `rooms/${params.code}/players/${rtdbKey(params.uid)}`), {
       uid: params.uid,
       name: params.name,
       photoUrl: params.photo,
-      isHost: false,
+      isHost,
       isOnline: true,
       lastSeen: rtdbNow(),
       isSpectator: false,

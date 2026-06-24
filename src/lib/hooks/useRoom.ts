@@ -28,6 +28,8 @@ export function useRoom(
   const [players, setPlayers] = useState<RoomPlayer[]>([]);
   const [exists, setExists] = useState<boolean | null>(null);
 
+  const [playersLoaded, setPlayersLoaded] = useState(false);
+
   useEffect(() => {
     if (!code || !db) {
       setExists(null);
@@ -50,6 +52,7 @@ export function useRoom(
           } else {
             setPlayers([]);
           }
+          setPlayersLoaded(true);
         }
       );
     }
@@ -67,7 +70,7 @@ export function useRoom(
 
   // Auto-join once the room exists and we know who we are but aren't listed.
   useEffect(() => {
-    if (!code || !uid || !exists || !profile?.name) return;
+    if (!code || !uid || !exists || !profile?.name || !playersLoaded) return;
     const alreadyIn = players.some((p) => p.uid === uid);
     if (alreadyIn) return;
     joinRoom({
