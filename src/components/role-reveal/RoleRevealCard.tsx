@@ -106,42 +106,38 @@ export function RoleRevealCard({
         }
         onDragStart={() => setDragged(true)}
         onDragEnd={handleDragEnd}
-        className="absolute inset-0 z-10 flex flex-col"
+        className="absolute inset-0 z-10 overflow-hidden bg-vice-night shadow-2xl"
       >
-        {/* Photo fills the screen */}
-        <div className="relative flex-1 overflow-hidden">
-          {photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-vice-dusk to-vice-midnight">
-              <Avatar name={name} photoUrl={photoUrl} size={140} />
-            </div>
-          )}
-          {/* Name */}
-          <div className="absolute inset-x-0 bottom-0 p-6 text-center">
-            <p className="font-display text-3xl uppercase text-ink neon-text">{name}</p>
+        {/* Photo fills the entire screen absolutely */}
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-vice-dusk to-vice-midnight">
+            <Avatar name={name} photoUrl={photoUrl} size={140} />
           </div>
-        </div>
+        )}
 
-        {/* Prompt / buttons strip ON the card */}
-        <div className="bg-vice-night/95 px-6 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        {/* Content overlaid at the bottom */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-6 pt-32 pb-[max(2rem,env(safe-area-inset-bottom))] text-center">
+          <p className="mb-6 font-display text-4xl uppercase text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] neon-text">{name}</p>
+
           {!locked ? (
-            <div className="flex flex-col items-center gap-1.5">
+            <div className="flex flex-col items-center gap-1.5 drop-shadow-md">
               <motion.div
                 animate={{ y: [0, -6, 0] }}
                 transition={{ repeat: Infinity, duration: 1.6 }}
-                className="text-neon-teal"
+                className="text-neon-teal drop-shadow-md"
               >
-                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth={2.5}>
                   <path d="M12 19V5M6 11l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </motion.div>
-              <p className="font-display text-sm uppercase tracking-[0.2em] text-muted">{prompt}</p>
+              <p className="font-display text-sm uppercase tracking-[0.2em] text-white drop-shadow-md">{prompt}</p>
             </div>
           ) : (
             <div className="flex gap-3">
-              <NeonButton variant="ghost" size="md" className="flex-1" onClick={undo} disabled={loading}>
+              <NeonButton variant="ghost" size="md" className="flex-1 bg-black/50 backdrop-blur-md" onClick={undo} disabled={loading}>
                 Undo
               </NeonButton>
               <NeonButton variant="teal" size="md" className="flex-1" onClick={onContinue} disabled={loading}>
