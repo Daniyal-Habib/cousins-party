@@ -42,7 +42,7 @@ export default function RoomPage() {
   const [leaving, setLeaving] = useState(false);
   const [starting, setStarting] = useState(false);
 
-  const isHost = me?.isHost ?? false;
+  const isHost = Boolean(room?.hostUid && uid === room.hostUid);
   const canStart = Boolean(room && players.length >= 4);
 
   const defaultRoles = {
@@ -189,6 +189,7 @@ export default function RoomPage() {
             </div>
             {players.map((p) => {
               const itsMe = p.uid === uid;
+              const pIsHost = p.uid === room?.hostUid;
               return (
                 <motion.div
                   key={p.uid}
@@ -208,7 +209,7 @@ export default function RoomPage() {
                     </button>
                   )}
                   <div className="relative">
-                    <Avatar name={p.name} photoUrl={p.photoUrl} size={56} ring={p.isHost ? "pink" : "teal"} />
+                    <Avatar name={p.name} photoUrl={p.photoUrl} size={56} ring={pIsHost ? "pink" : "teal"} />
                     {!p.isOnline && (
                       <span className="absolute -right-1 bottom-1 h-3 w-3 rounded-full border-2 border-vice-night bg-muted" />
                     )}
@@ -218,7 +219,7 @@ export default function RoomPage() {
                     {itsMe && <span className="ml-1 text-[10px] text-neon-teal">you</span>}
                   </p>
                   <div className="flex gap-1 text-[9px] uppercase tracking-wider text-muted">
-                    {p.isHost && <span className="text-neon-pink">Host</span>}
+                    {pIsHost && <span className="text-neon-pink">Host</span>}
                     {p.isSpectator && <span className="text-neon-orange">Watching</span>}
                   </div>
                 </motion.div>
