@@ -83,7 +83,7 @@ export function useRoom(
     // We intentionally don't depend on `players` — re-running on every player
     // change would re-trigger join attempts. The snapshot will update `me`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, uid, exists, profile?.name, profile?.photoUrl]);
+  }, [code, uid, exists, profile?.name, profile?.photoUrl, playersLoaded]);
 
   // Presence: attach when we know who we are and we're in the player list.
   useEffect(() => {
