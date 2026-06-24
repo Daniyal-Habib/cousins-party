@@ -48,7 +48,8 @@ export function useRoom(
         (snap) => {
           const val = snap.val() as Record<string, RoomPlayer> | null;
           if (val) {
-            setPlayers(Object.values(val));
+            const validPlayers = Object.values(val).filter((p) => p.uid && p.name);
+            setPlayers(validPlayers);
           } else {
             setPlayers([]);
           }
