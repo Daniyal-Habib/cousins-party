@@ -112,11 +112,11 @@ export function localMafiaReducer(
 
     case "RESOLVE_NIGHT": {
       const { killedUid, savedUid, detectiveCheckUid } = state.pendingNight;
-      const killed: string[] = [];
+      const deaths: { uid: string; reason: "mafia" | "sheriff" | "voted" }[] = [];
       const narration: string[] = [];
 
       if (killedUid && killedUid !== savedUid) {
-        killed.push(killedUid);
+        deaths.push({ uid: killedUid, reason: "mafia" });
         const victim = state.players.find((p) => p.uid === killedUid);
         narration.push(`${victim?.name} was eliminated during the night.`);
       } else if (killedUid && killedUid === savedUid) {
@@ -131,7 +131,7 @@ export function localMafiaReducer(
         narration.push(`Detective's report: ${target?.name} is ${isMafia ? "MAFIA" : "not Mafia"}.`);
       }
 
-      const players = applyDeaths(state.players, killed);
+      const players = applyDeaths(state.players, deaths);
 
       // Win check after night.
       const win = checkWin(players);
@@ -158,7 +158,7 @@ export function localMafiaReducer(
       const players = state.pendingTie
         ? state.players
         : eliminatedUid
-          ? applyDeaths(state.players, [eliminatedUid])
+          ? applyDeaths(state.players, [{ uid: eliminatedUid, reason: "voted" }])
           : state.players;
       let narration: string;
 

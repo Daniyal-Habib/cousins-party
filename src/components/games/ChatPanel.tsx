@@ -54,7 +54,7 @@ export function ChatPanel({
               key={m.id}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className={cn("flex items-end gap-2", mine && "flex-row-reverse")}
+              className={cn("flex items-end gap-2", mine && "flex-row-reverse", m.isDead && "opacity-50")}
             >
               <Avatar name={m.authorName} photoUrl={m.authorPhoto} size={28} />
               <div className={cn("max-w-[75%]", mine && "items-end text-right")}>

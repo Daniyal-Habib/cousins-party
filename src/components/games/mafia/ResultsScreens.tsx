@@ -88,6 +88,9 @@ export function DayResultsScreen() {
           <Story color="pink">
             The town voted out{" "}
             <AvatarName player={byUid(day.eliminated)} />.
+            <div className="mt-2 font-display text-xs uppercase tracking-widest text-ink">
+              {byUid(day.eliminated)?.role === "mafia" ? "They were MAFIA 💀" : "They were NOT MAFIA 🕊️"}
+            </div>
           </Story>
         )}
         {(!day?.eliminated || day?.eliminated === "skip") && !day?.tied && (

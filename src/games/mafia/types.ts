@@ -28,6 +28,8 @@ export interface MafiaPlayer {
   photoUrl: string | null;
   role: MafiaRole;
   alive: boolean;
+  /** How they died, if dead. */
+  deathReason?: "mafia" | "sheriff" | "voted";
   /** Spectator = eliminated and now watching. */
   isSpectator: boolean;
 }

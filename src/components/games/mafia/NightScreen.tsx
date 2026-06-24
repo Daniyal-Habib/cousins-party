@@ -61,10 +61,21 @@ function MafiaNight() {
   const livingMafia = state!.players.filter((p) => p.alive && p.role === "mafia");
   const allVoted = allVotes.length === livingMafia.length;
   const isDisagreement = allVotes.length > 0 && new Set(allVotes).size > 1;
+  const isSingleMafia = livingMafia.length === 1;
 
-  async function confirm(uid: string) {
+  async function select(uid: string) {
     setTarget(uid);
-    await submitMafiaVote(code, me!.uid, uid);
+    // If multiple mafia, broadcast live for real-time agreement tracking.
+    // If single mafia, defer until they click "Lock in target" so they don't accidentally auto-skip the screen.
+    if (!isSingleMafia) {
+      await submitMafiaVote(code, me!.uid, uid);
+    }
+  }
+
+  async function lockSingleVote() {
+    if (target) {
+      await submitMafiaVote(code, me!.uid, target);
+    }
   }
 
   return (
@@ -108,14 +119,28 @@ function MafiaNight() {
       )}
 
       {(!allVoted || isDisagreement) && (
-        <PlayerSelectGrid
-          players={state!.players}
-          selectedUid={myVote || target}
-          onSelect={confirm}
-          selfUid={me!.uid}
-          excludeUids={state!.players.filter((p) => p.role === "mafia").map((p) => p.uid)}
-          emptyHint="Nobody left to target."
-        />
+        <>
+          <PlayerSelectGrid
+            players={state!.players}
+            selectedUid={myVote || target}
+            onSelect={select}
+            selfUid={me!.uid}
+            excludeUids={state!.players.filter((p) => p.role === "mafia").map((p) => p.uid)}
+            emptyHint="Nobody left to target."
+          />
+          {isSingleMafia && (
+            <NeonButton
+              variant="pink"
+              fullWidth
+              glow
+              className="mt-4"
+              disabled={!target}
+              onClick={lockSingleVote}
+            >
+              Lock in target
+            </NeonButton>
+          )}
+        </>
       )}
 
       {/* Private Mafia chat — gated by security rules from non-mafia */}

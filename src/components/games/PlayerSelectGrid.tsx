@@ -21,8 +21,9 @@ export function PlayerSelectGrid({
   selfUid,
   emptyHint,
   votedUids,
+  showDeadPlayers = false,
 }: {
-  players: { uid: string; name: string; photoUrl: string | null; alive: boolean }[];
+  players: { uid: string; name: string; photoUrl: string | null; alive: boolean; deathReason?: "mafia" | "sheriff" | "voted" }[];
   selectedUid: string | null;
   onSelect: (uid: string) => void;
   excludeUids?: string[];
@@ -31,9 +32,10 @@ export function PlayerSelectGrid({
   selfUid?: string;
   emptyHint?: string;
   votedUids?: string[];
+  showDeadPlayers?: boolean;
 }) {
   const selectable = players.filter(
-    (p) => p.alive && !excludeUids.includes(p.uid) && (selfSelectable || p.uid !== selfUid),
+    (p) => (!excludeUids.includes(p.uid)) && (selfSelectable || p.uid !== selfUid) && (showDeadPlayers || p.alive),
   );
 
   if (selectable.length === 0) {
@@ -48,7 +50,8 @@ export function PlayerSelectGrid({
     <div className="grid grid-cols-3 gap-3">
       {selectable.map((p) => {
         const selected = selectedUid === p.uid;
-        const disabled = disabledUids.includes(p.uid);
+        const isDead = !p.alive;
+        const disabled = disabledUids.includes(p.uid) || isDead;
         return (
           <motion.button
             key={p.uid}
@@ -61,11 +64,16 @@ export function PlayerSelectGrid({
               disabled && "opacity-30 grayscale",
             )}
           >
-            {votedUids?.includes(p.uid) && (
+            {votedUids?.includes(p.uid) && !isDead && (
               <div className="absolute top-2 right-2 rounded-full bg-neon-teal p-0.5 text-black">
                 <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
+              </div>
+            )}
+            {isDead && p.deathReason && (
+              <div className="absolute top-1 right-1 text-lg leading-none drop-shadow-md">
+                {p.deathReason === "mafia" ? "💀" : p.deathReason === "sheriff" ? "🤡" : "🥾"}
               </div>
             )}
             <Avatar

@@ -24,26 +24,8 @@ export function DayScreen() {
   const voted = Boolean(myVote);
   const alive = me.alive;
 
-  // Spectators / eliminated players only see chat.
-  if (!alive) {
-    return (
-      <DayShell timer={formatted} alive={false}>
-        <div className="glass h-full overflow-hidden">
-          <ChatPanel
-            code={code}
-            subcollection="chat"
-            author={{ uid: me.uid, name: me.name, photo: me.photoUrl, isDead: true }}
-            placeholder="You're out — chat only…"
-            accent="pink"
-            compact
-            viewerIsDead={true}
-          />
-        </div>
-      </DayShell>
-    );
-  }
-
   async function castVote(target: string) {
+    if (!alive) return;
     await submitDayVote(code, me!.uid, target);
   }
 
@@ -74,9 +56,15 @@ export function DayScreen() {
             selfUid={me.uid}
             emptyHint="Nobody left to vote against."
             votedUids={Object.keys(state.dayVotes || {})}
-            disabledUids={voted ? state.players.map(p => p.uid) : []}
+            disabledUids={!alive || voted ? state.players.map(p => p.uid) : []}
+            showDeadPlayers={true}
           />
-          {voted ? (
+          {!alive ? (
+            <GlassPanel glow="pink" className="text-center">
+              <p className="font-display uppercase text-ink">Spectating</p>
+              <p className="mt-1 text-sm text-muted">You have been eliminated.</p>
+            </GlassPanel>
+          ) : voted ? (
             <GlassPanel glow="pink" className="text-center">
               <p className="font-display uppercase text-ink">
                 {myVote === "skip" ? "Skipped" : "Vote locked"}
@@ -105,11 +93,11 @@ export function DayScreen() {
           <ChatPanel
             code={code}
             subcollection="chat"
-            author={{ uid: me.uid, name: me.name, photo: me.photoUrl, isDead: false }}
-            placeholder="Discuss who you suspect…"
+            author={{ uid: me.uid, name: me.name, photo: me.photoUrl, isDead: !alive }}
+            placeholder={alive ? "Discuss who you suspect…" : "You're out — chat only…"}
             accent="pink"
             compact
-            viewerIsDead={false}
+            viewerIsDead={!alive}
           />
         </div>
       )}
@@ -144,8 +132,6 @@ export function DayScreen() {
                   <Avatar name={confirmVote.targetName} photoUrl={null} size={140} />
                 </div>
               )}
-              {/* Frosted gradient at bottom for legibility */}
-              <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-vice-night to-transparent" />
               {/* Name */}
               <div className="absolute inset-x-0 bottom-0 p-6 text-center">
                 <p className="font-display text-3xl uppercase text-ink neon-text">{confirmVote.targetName}</p>

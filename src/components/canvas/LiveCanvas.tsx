@@ -23,9 +23,11 @@ const SIZES = [3, 6, 12, 22];
 export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const strokesRef = useRef<Map<string, Stroke>>(new Map());
+  const privateStrokesRef = useRef<Map<string, Stroke>>(new Map());
   const drawingRef = useRef<Stroke | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  const [mode, setMode] = useState<"live" | "private">("live");
   const [color, setColor] = useState(COLORS[0]);
   const [size, setSize] = useState(SIZES[1]);
   const [eraser, setEraser] = useState(false);
@@ -44,6 +46,8 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
       const val = (snap.val() ?? {}) as Record<string, Stroke>;
       strokesRef.current = new Map(Object.entries(val));
       setReady(true);
+      // Only force a redraw if we are in live mode, else let the private canvas stay on screen.
+      // Wait, we can just call redraw() which will read the current mode.
       redraw();
     });
     return () => off(r, "value", unsub);
@@ -56,7 +60,7 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
     if (wrapperRef.current) ro.observe(wrapperRef.current);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mode, zoom, pan]); // Add state deps that redraw uses, since redraw isn't wrapped in useCallback
 
   /** Convert a screen point to canvas-space accounting for zoom/pan. */
   const toCanvas = useCallback((clientX: number, clientY: number) => {
@@ -89,11 +93,14 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
     const cur = drawingRef.current;
     drawingRef.current = null;
     if (!cur || cur.points.length === 0) return;
-    if (rtdb) push(ref(rtdb, `canvas/${code}/strokes`), cur).catch(console.error);
-    redraw();
-    // redraw reads only refs — no deps needed.
+    if (mode === "live") {
+      if (rtdb) push(ref(rtdb, `canvas/${code}/strokes`), cur).catch(console.error);
+    } else {
+      privateStrokesRef.current.set(Date.now().toString() + Math.random(), cur);
+      redraw();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
+  }, [code, mode]);
 
   // ---- Pointer handlers (single-finger draw) ----
   function onPointerDown(e: React.PointerEvent) {
@@ -139,6 +146,10 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
     if (e.touches.length < 2) pinchRef.current = null;
   }
 
+  // Ensure canvas redraws when panning or zooming updates via state
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { redraw(); }, [zoom, pan, mode]);
+
   // ---- Drawing ----
   function redraw() {
     const canvas = canvasRef.current;
@@ -153,9 +164,11 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
     const ctx = canvas.getContext("2d")!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
+    ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, pan.x * dpr, pan.y * dpr);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    for (const s of strokesRef.current.values()) drawStroke(ctx, s);
+    const activeStrokes = mode === "live" ? strokesRef.current : privateStrokesRef.current;
+    for (const s of activeStrokes.values()) drawStroke(ctx, s);
   }
 
   function redrawWith(current: Stroke) {
@@ -179,9 +192,13 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
   }
 
   async function clearCanvas() {
-    if (!rtdb) return;
-    strokesRef.current.clear();
-    await remove(ref(rtdb, `canvas/${code}`));
+    if (mode === "live") {
+      if (!rtdb) return;
+      strokesRef.current.clear();
+      await remove(ref(rtdb, `canvas/${code}`));
+    } else {
+      privateStrokesRef.current.clear();
+    }
     redraw();
   }
 
@@ -191,7 +208,6 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
       <div
         ref={wrapperRef}
         className="relative flex-1 touch-none overflow-hidden bg-vice-midnight/40"
-        style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: "0 0" }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -231,6 +247,25 @@ export function LiveCanvas({ code, enabled }: { code: string; enabled: boolean }
       {/* Toolbar */}
       {enabled && (
         <div className="space-y-2 border-t border-white/10 bg-vice-night/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex bg-white/10 rounded-lg p-1 w-full max-w-[200px]">
+              <button
+                onClick={() => setMode("live")}
+                className={cn("flex-1 py-1 px-2 rounded-md text-xs font-semibold uppercase tracking-wider transition", mode === "live" ? "bg-neon-pink text-white" : "text-muted")}
+              >
+                Live
+              </button>
+              <button
+                onClick={() => setMode("private")}
+                className={cn("flex-1 py-1 px-2 rounded-md text-xs font-semibold uppercase tracking-wider transition", mode === "private" ? "bg-neon-teal text-black" : "text-muted")}
+              >
+                Private
+              </button>
+            </div>
+            {mode === "private" && (
+              <span className="text-xs text-muted uppercase tracking-wider">Only you can see this</span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {COLORS.map((c) => (
               <button

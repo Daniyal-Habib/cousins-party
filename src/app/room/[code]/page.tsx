@@ -301,7 +301,7 @@ export default function RoomPage() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-50 flex flex-col bg-vice-night"
           >
-            <div className="absolute right-5 top-[max(1rem,env(safe-area-inset-top))] z-50">
+            <div className="absolute left-5 top-[max(1rem,env(safe-area-inset-top))] z-50">
               <button
                 onClick={() => setFullScreenCanvas(false)}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md"

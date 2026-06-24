@@ -177,13 +177,12 @@ function jesterWin(players: MafiaPlayer[], jesterUid: string): WinState {
 /** Apply a set of deaths to the player list (returns new array). */
 export function applyDeaths(
   players: MafiaPlayer[],
-  killedUids: string[],
-  extraDeaths: string[] = [],
+  deaths: { uid: string; reason: "mafia" | "sheriff" | "voted" }[],
 ): MafiaPlayer[] {
-  const dead = new Set([...killedUids, ...extraDeaths]);
+  const dict = new Map(deaths.map((d) => [d.uid, d.reason]));
   return players.map((p) =>
-    dead.has(p.uid)
-      ? { ...p, alive: false, isSpectator: true }
+    dict.has(p.uid)
+      ? { ...p, alive: false, isSpectator: true, deathReason: dict.get(p.uid) }
       : p,
   );
 }

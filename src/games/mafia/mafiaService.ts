@@ -56,6 +56,13 @@ export async function startMafiaGame(
     ...state,
     updatedAt: serverTimestamp(),
   });
+
+  // Clear chat and mafiaChat subcollections for the new game
+  const { getDocs, collection, deleteDoc } = await import("firebase/firestore");
+  const chatSnap = await getDocs(collection(db, "rooms", code, "chat"));
+  chatSnap.forEach((d) => deleteDoc(d.ref));
+  const mafiaChatSnap = await getDocs(collection(db, "rooms", code, "mafiaChat"));
+  mafiaChatSnap.forEach((d) => deleteDoc(d.ref));
 }
 
 /** Subscribe to the game doc. */
@@ -186,14 +193,21 @@ export async function resolveNightPhase(code: string): Promise<void> {
     };
 
     const result = resolveNight(state.players, actions);
+    const deaths: { uid: string; reason: "mafia" | "sheriff" | "voted" }[] = result.killed.map((uid) => ({
+      uid,
+      reason: uid === result.sheriffOutcome?.shot ? "sheriff" : "mafia",
+    }));
     // Extra deaths: sheriff who missed their shot.
     const extraDeaths: string[] = [];
     if (result.sheriffOutcome?.sheriffDied) {
       const sheriff = state.players.find((p) => p.role === "sheriff" && p.alive);
-      if (sheriff) extraDeaths.push(sheriff.uid);
+      if (sheriff) {
+        deaths.push({ uid: sheriff.uid, reason: "sheriff" });
+        extraDeaths.push(sheriff.uid);
+      }
     }
 
-    const newPlayers = applyDeaths(state.players, result.killed, extraDeaths);
+    const newPlayers = applyDeaths(state.players, deaths);
     // Strip undefined values — Firestore SDK rejects writes containing undefined.
     const nightRecord = JSON.parse(JSON.stringify({ ...result, extraDeaths }));
     tx.update(doc(database, "rooms", code, "games", "mafia"), {
@@ -250,7 +264,7 @@ export async function resolveDayPhase(code: string): Promise<void> {
     const result = resolveDay(state.dayVotes || {});
     const eliminatedUid: string | null = result.eliminated;
     const players = eliminatedUid
-      ? applyDeaths(state.players, [eliminatedUid])
+      ? applyDeaths(state.players, [{ uid: eliminatedUid, reason: "voted" }])
       : state.players;
 
     const win = checkWin(players, eliminatedUid ?? undefined);

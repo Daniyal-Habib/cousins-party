@@ -118,9 +118,6 @@ export function RoleRevealCard({
               <Avatar name={name} photoUrl={photoUrl} size={140} />
             </div>
           )}
-          {/* Frosted gradient at bottom for legibility */}
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-vice-night to-transparent" />
-
           {/* Name */}
           <div className="absolute inset-x-0 bottom-0 p-6 text-center">
             <p className="font-display text-3xl uppercase text-ink neon-text">{name}</p>
