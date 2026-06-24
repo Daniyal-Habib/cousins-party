@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, useMotionValue, useAnimationControls, type PanInfo } from "framer-motion";
 import { Avatar } from "@/components/theme/Avatar";
 import { NeonButton } from "@/components/theme/NeonButton";
@@ -37,7 +37,7 @@ export function RoleRevealCard({
   loading?: boolean;
   onContinue: () => void;
 }) {
-  const screenHRef = useRef(0);
+  const [screenH, setScreenH] = useState(0);
   const [locked, setLocked] = useState(false);
 
   // Drive the card position with a motion value (no React re-renders during drag).
@@ -46,7 +46,7 @@ export function RoleRevealCard({
 
   // Read viewport height on mount + resize.
   useEffect(() => {
-    const update = () => { screenHRef.current = window.innerHeight; };
+    const update = () => setScreenH(window.innerHeight);
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
@@ -54,23 +54,27 @@ export function RoleRevealCard({
 
   const handleDragEnd = useCallback((_: unknown, info: PanInfo) => {
     if (locked) return;
-    const threshold = -(screenHRef.current / 4); // negative: must drag up past 25%
+    
+    // Fallback to 800 if screenH is 0
+    const currentScreenH = screenH || (typeof window !== "undefined" ? window.innerHeight : 800);
+    const threshold = -(currentScreenH / 4); // negative: must drag up past 25%
+    
     if (info.offset.y <= threshold) {
       setLocked(true);
-      // Snap to locked position (50% up).
-      controls.start({ y: -(screenHRef.current / 2), transition: { type: "spring", stiffness: 400, damping: 35 } });
+      // Snap card back down to hide the role securely
+      controls.start({ y: 0, transition: { type: "spring", stiffness: 400, damping: 35 } });
     } else {
       // Didn't drag far enough — snap back.
       controls.start({ y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } });
     }
-  }, [locked, controls]);
+  }, [locked, controls, screenH]);
 
   const undo = useCallback(() => {
     setLocked(false);
     controls.start({ y: 0, transition: { type: "spring", stiffness: 400, damping: 30 } });
   }, [controls]);
 
-  const lockY = -(screenHRef.current || 400) / 2;
+  const lockY = -(screenH || (typeof window !== "undefined" ? window.innerHeight : 800)) / 2;
 
   return (
     <div className="relative h-[100dvh] w-full overflow-hidden bg-vice-night">
