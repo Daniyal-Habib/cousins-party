@@ -6,7 +6,6 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
-  collection,
 } from "firebase/firestore";
 import { onDisconnect, onValue, ref, serverTimestamp as rtdbNow, set, get, remove, update } from "firebase/database";
 import { db, rtdb } from "@/lib/firebase";
