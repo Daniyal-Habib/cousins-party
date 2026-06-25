@@ -93,7 +93,6 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
   // Scoring logic
   useEffect(() => {
     if (phase === "revealing" && currentRound !== processedRoundRef.current) {
-      // We set a small delay to ensure all choices have arrived via websocket
       const timer = setTimeout(() => {
         const myChoice = choices[uidKey];
         if (myChoice && rtdb) {
@@ -110,7 +109,6 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
         }
         processedRoundRef.current = currentRound;
       }, 1000);
-      
       return () => clearTimeout(timer);
     }
   }, [phase, currentRound, choices, code, uidKey]);
@@ -121,6 +119,21 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
   }
 
   const myChoice = choices[uidKey];
+
+  let myRoundDelta = 0;
+  if (phase === "revealing" && myChoice) {
+    Object.entries(choices).forEach(([otherUid, otherChoice]) => {
+      if (otherUid !== uidKey) {
+        myRoundDelta += getScoreDelta(myChoice, otherChoice);
+      }
+    });
+  }
+
+  const circumference = 2 * Math.PI * 46;
+  const progress = phase === "picking" 
+    ? 1 - (elapsedInRound / PICK_DURATION)
+    : 1 - ((elapsedInRound - PICK_DURATION) / (ROUND_DURATION - PICK_DURATION));
+  const strokeDashoffset = circumference - progress * circumference;
 
   return (
     <div className="relative flex h-full w-full flex-col bg-vice-midnight/80">
@@ -141,25 +154,70 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
         <div className="w-10" /> {/* spacer */}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-8 no-scrollbar">
+      <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-6 no-scrollbar">
+        
         {/* Timer & Status */}
         <div className="flex flex-col items-center justify-center gap-2">
-          <motion.div 
-            key={phase}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-neon-teal/30 bg-vice-night/50 shadow-neon-teal/20 shadow-lg"
-          >
-            <span className={cn(
-              "font-display text-5xl",
-              timeLeft <= 3 ? "text-neon-pink" : "text-neon-teal"
-            )}>
-              {timeLeft}
-            </span>
-          </motion.div>
-          <p className="font-display text-sm uppercase tracking-widest text-ink mt-2">
+          <div className="relative flex h-32 w-32 items-center justify-center">
+            <svg className="absolute inset-0 h-full w-full -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="46" fill="none" className="stroke-white/10" strokeWidth="6" />
+              <circle
+                cx="50" cy="50" r="46" fill="none"
+                stroke="currentColor" strokeWidth="6"
+                strokeLinecap="round"
+                className={cn(
+                  "transition-all duration-300 ease-linear",
+                  timeLeft <= 3 ? "text-neon-pink" : "text-neon-teal"
+                )}
+                style={{ strokeDasharray: circumference, strokeDashoffset }}
+              />
+            </svg>
+            <motion.div 
+              key={timeLeft}
+              initial={{ scale: 0.8, opacity: 0.5 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className="flex h-20 w-20 items-center justify-center rounded-full bg-vice-night/60 shadow-inner backdrop-blur-sm"
+            >
+              <span className={cn(
+                "font-display text-5xl",
+                timeLeft <= 3 ? "text-neon-pink animate-pulse" : "text-neon-teal"
+              )}>
+                {timeLeft}
+              </span>
+            </motion.div>
+          </div>
+          <p className={cn(
+            "font-display text-sm uppercase tracking-widest mt-2",
+            phase === "revealing" ? "text-neon-teal" : "text-ink"
+          )}>
             {phase === "picking" ? "Pick your weapon!" : "Results!"}
           </p>
+        </div>
+
+        {/* Dynamic Results Banner */}
+        <div className="h-10">
+          <AnimatePresence>
+            {phase === "revealing" && myChoice && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="flex justify-center"
+              >
+                <div className={cn(
+                  "rounded-full px-6 py-2 border-2 shadow-lg",
+                  myRoundDelta > 0 ? "border-neon-teal bg-neon-teal/10 shadow-neon-teal/20 text-neon-teal" :
+                  myRoundDelta < 0 ? "border-neon-pink bg-neon-pink/10 shadow-neon-pink/20 text-neon-pink" :
+                  "border-white/20 bg-white/5 text-ink"
+                )}>
+                  <span className="font-display text-sm uppercase tracking-widest">
+                    {myRoundDelta > 0 ? `Won ${myRoundDelta} Points!` : myRoundDelta < 0 ? `Lost ${Math.abs(myRoundDelta)} Points` : "Draw"}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Weapons */}
@@ -172,26 +230,32 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
                 disabled={phase !== "picking"}
                 onClick={() => pickWeapon(w.id as WeaponId)}
                 className={cn(
-                  "relative flex h-20 w-20 flex-col items-center justify-center rounded-2xl border-2 transition-all duration-200 active:scale-90",
+                  "relative flex h-24 w-24 flex-col items-center justify-center rounded-3xl border-2 transition-all duration-300",
                   isSelected
-                    ? "border-neon-teal bg-neon-teal/20 shadow-neon-teal scale-110 z-10"
-                    : "border-white/10 bg-white/5 hover:bg-white/10 opacity-70",
-                  phase === "revealing" && !isSelected && "opacity-30 grayscale"
+                    ? "border-neon-teal bg-neon-teal/20 shadow-[0_0_20px_rgba(31,224,216,0.4)] scale-110 z-10"
+                    : "border-white/10 bg-white/5 hover:bg-white/10 opacity-80 active:scale-95",
+                  phase === "revealing" && !isSelected && "opacity-30 grayscale scale-95"
                 )}
               >
-                <span className="text-3xl">{w.icon}</span>
-                <span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ink">{w.label}</span>
+                <span className={cn("text-4xl transition-transform", isSelected && "scale-110")}>{w.icon}</span>
+                <span className="mt-2 text-[11px] font-bold uppercase tracking-wider text-ink">{w.label}</span>
+                
+                {isSelected && phase === "picking" && (
+                  <span className="absolute -bottom-3 rounded-full bg-neon-teal px-3 py-1 text-[9px] font-black uppercase tracking-widest text-black shadow-[0_0_10px_rgba(31,224,216,0.5)]">
+                    Selected
+                  </span>
+                )}
               </button>
             )
           })}
         </div>
 
         {/* Players Area */}
-        <div className="mt-4 flex-1">
+        <div className="mt-4 flex-1 pb-10">
           <h3 className="mb-4 font-display text-xs uppercase tracking-[0.2em] text-muted text-center border-b border-white/10 pb-2">
             {phase === "picking" ? "Combatants" : "Round Results"}
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <AnimatePresence mode="popLayout">
               {players
                 .map((p) => {
@@ -219,47 +283,55 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
                       className={cn(
-                        "glass relative flex flex-col items-center gap-2 p-3 transition",
-                        itsMe && "ring-1 ring-neon-teal/50"
+                        "glass relative flex flex-col items-center gap-3 p-4 transition duration-300",
+                        itsMe && "ring-2 ring-neon-teal/50 bg-white/10",
+                        phase === "revealing" && delta > 0 && "ring-1 ring-neon-teal shadow-[0_0_15px_rgba(31,224,216,0.15)]",
+                        phase === "revealing" && delta < 0 && "ring-1 ring-neon-pink shadow-[0_0_15px_rgba(255,45,123,0.15)]"
                       )}
                     >
                       <div className="relative">
-                        <Avatar name={p.name} photoUrl={p.photoUrl} size={48} ring={itsMe ? "teal" : undefined} />
+                        <Avatar name={p.name} photoUrl={p.photoUrl} size={56} ring={itsMe ? "teal" : undefined} />
                         
                         {phase === "picking" && hasPicked && (
-                          <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-neon-teal text-[10px]">
+                          <motion.div 
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-neon-teal text-xs text-black border-2 border-vice-night shadow-md"
+                          >
                             ✓
-                          </div>
+                          </motion.div>
                         )}
 
                         {phase === "revealing" && weaponIcon && (
                           <motion.div 
                             initial={{ scale: 0, rotate: -45 }}
                             animate={{ scale: 1, rotate: 0 }}
-                            className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-vice-night border border-white/20 text-lg shadow-lg"
+                            transition={{ type: "spring", bounce: 0.6 }}
+                            className="absolute -bottom-3 -right-3 flex h-10 w-10 items-center justify-center rounded-full bg-vice-night border-2 border-white/20 text-xl shadow-xl z-10"
                           >
                             {weaponIcon}
                           </motion.div>
                         )}
                       </div>
                       
-                      <div className="text-center w-full">
-                        <p className="max-w-full truncate text-xs font-semibold text-ink">
-                          {p.name} {itsMe && <span className="text-[10px] text-neon-teal">(You)</span>}
+                      <div className="text-center w-full mt-2">
+                        <p className="max-w-full truncate text-sm font-bold text-ink">
+                          {p.name} {itsMe && <span className="text-[10px] text-neon-teal ml-1">(You)</span>}
                         </p>
-                        <p className="text-[10px] uppercase tracking-widest text-muted">
-                          Score: <span className="text-ink font-bold">{p.score}</span>
+                        <p className="text-[11px] uppercase tracking-widest text-muted mt-1">
+                          Score: <span className="text-ink font-black text-sm">{p.score}</span>
                         </p>
                       </div>
 
                       {/* Score Delta Indicator during reveal */}
                       {phase === "revealing" && !itsMe && delta !== 0 && (
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
+                          initial={{ opacity: 0, y: 10, scale: 0.8 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
                           className={cn(
-                            "absolute top-2 right-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                            delta > 0 ? "bg-neon-teal/20 text-neon-teal" : "bg-neon-pink/20 text-neon-pink"
+                            "absolute top-2 right-2 text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded-full border",
+                            delta > 0 ? "border-neon-teal bg-neon-teal/20 text-neon-teal shadow-sm shadow-neon-teal/20" : 
+                                        "border-neon-pink bg-neon-pink/20 text-neon-pink shadow-sm shadow-neon-pink/20"
                           )}
                         >
                           {delta > 0 ? `Won` : `Lost`}
