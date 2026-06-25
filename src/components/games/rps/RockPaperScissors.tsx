@@ -212,7 +212,7 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
                   const weaponIcon = WEAPONS.find(w => w.id === theirChoice)?.icon;
 
                   return (
-                    <motion.layout
+                    <motion.div
                       key={p.uid}
                       layout
                       initial={{ opacity: 0, scale: 0.9 }}
@@ -265,7 +265,7 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
                           {delta > 0 ? `Won` : `Lost`}
                         </motion.div>
                       )}
-                    </motion.layout>
+                    </motion.div>
                   );
                 })}
             </AnimatePresence>
