@@ -45,6 +45,7 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
   const [offset, setOffset] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [localChoice, setLocalChoice] = useState<WeaponId | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
   const processedRoundRef = useRef<number | null>(null);
 
@@ -85,6 +86,7 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
   // Sync choices for current round
   useEffect(() => {
     if (!rtdb || !currentRound) return;
+    setLocalChoice(null); // Reset local choice on new round
     const choicesRef = ref(rtdb, `rps/${code}/choices/${currentRound}`);
     const unsub = onValue(choicesRef, (snap) => setChoices(snap.val() || {}));
     return () => off(choicesRef, "value", unsub);
@@ -115,10 +117,11 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
 
   async function pickWeapon(weapon: WeaponId) {
     if (phase !== "picking" || !rtdb) return;
+    setLocalChoice(weapon); // Instant UI feedback
     await set(ref(rtdb, `rps/${code}/choices/${currentRound}/${uidKey}`), weapon);
   }
 
-  const myChoice = choices[uidKey];
+  const myChoice = localChoice || choices[uidKey];
 
   let myRoundDelta = 0;
   if (phase === "revealing" && myChoice) {
