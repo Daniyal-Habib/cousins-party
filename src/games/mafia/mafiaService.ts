@@ -57,16 +57,18 @@ export async function startMafiaGame(
     updatedAt: serverTimestamp(),
   });
 
-  // Clear chat and mafiaChat subcollections for the new game
-  try {
-    const { getDocs, collection, deleteDoc } = await import("firebase/firestore");
-    const chatSnap = await getDocs(collection(db, "rooms", code, "chat"));
-    chatSnap.forEach((d) => deleteDoc(d.ref).catch(() => {}));
-    const mafiaChatSnap = await getDocs(collection(db, "rooms", code, "mafiaChat"));
-    mafiaChatSnap.forEach((d) => deleteDoc(d.ref).catch(() => {}));
-  } catch (err) {
-    console.warn("Could not clear old chats. Check Firestore rules for allow delete.", err);
-  }
+  // Clear chat and mafiaChat subcollections for the new game in the background
+  (async () => {
+    try {
+      const { getDocs, collection, deleteDoc } = await import("firebase/firestore");
+      const chatSnap = await getDocs(collection(db, "rooms", code, "chat"));
+      chatSnap.forEach((d) => deleteDoc(d.ref).catch(() => {}));
+      const mafiaChatSnap = await getDocs(collection(db, "rooms", code, "mafiaChat"));
+      mafiaChatSnap.forEach((d) => deleteDoc(d.ref).catch(() => {}));
+    } catch (err) {
+      console.warn("Could not clear old chats. Check Firestore rules for allow delete.", err);
+    }
+  })();
 }
 
 /** Subscribe to the game doc. */
@@ -354,7 +356,7 @@ export async function forceEndDay(code: string): Promise<void> {
  *
  * Reads the room player docs (separate from the game doc) to find lastSeen.
  */
-export async function sweepStalePlayers(code: string, graceMs = 60_000): Promise<void> {
+export async function sweepStalePlayers(code: string, graceMs = 300_000): Promise<void> {
   if (!db) return;
   const database = db;
   const { get, ref } = await import("firebase/database");
