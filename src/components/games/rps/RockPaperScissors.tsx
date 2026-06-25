@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { ref, onValue, set, runTransaction, off } from "firebase/database";
 import { rtdb } from "@/lib/firebase";
 import { rtdbKey } from "@/lib/rtdbKey";
-import { NeonButton } from "@/components/theme/NeonButton";
 import { Avatar } from "@/components/theme/Avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/cn";
@@ -202,7 +201,6 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
                 .sort((a, b) => b.score - a.score)
                 .map((p) => {
                   const itsMe = p.uid === uid;
-                  const pKey = rtdbKey(p.uid);
                   const theirChoice = p.choice;
                   const hasPicked = Boolean(theirChoice);
                   
