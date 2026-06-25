@@ -24,8 +24,16 @@ export function MafiaGame() {
 
   if (loading || !state) {
     return (
-      <div className="flex h-[100dvh] items-center justify-center">
-        <p className="text-sm text-muted">Loading game…</p>
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center">
+          <div className="mb-4 text-5xl animate-pulse">🎭</div>
+          <h1 className="mt-2 font-display text-2xl uppercase text-ink">
+            Dealing roles...
+          </h1>
+          <p className="mt-3 text-sm text-muted">
+            Getting the deck ready.
+          </p>
+        </div>
       </div>
     );
   }

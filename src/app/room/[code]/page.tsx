@@ -95,6 +95,13 @@ export default function RoomPage() {
     }
     if (room?.status === "playing" && room.gameType) {
       router.push(`/play/${code}/${room.gameType}`);
+      // Fallback: If router.push silently fails or stalls, force a hard navigation.
+      const timer = setTimeout(() => {
+        if (window.location.pathname.includes(`/room/`)) {
+          window.location.assign(`/play/${code}/${room.gameType}`);
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [room?.status, room?.gameType, code, router]);
 
