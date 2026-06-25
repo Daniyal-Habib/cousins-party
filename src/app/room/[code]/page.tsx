@@ -7,7 +7,7 @@ import { GradientBackdrop } from "@/components/theme/GradientBackdrop";
 import { GlassPanel } from "@/components/theme/GlassPanel";
 import { NeonButton } from "@/components/theme/NeonButton";
 import { Avatar } from "@/components/theme/Avatar";
-import { LiveCanvas } from "@/components/canvas/LiveCanvas";
+import { RockPaperScissors } from "@/components/games/rps/RockPaperScissors";
 import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { useUser } from "@/lib/hooks/useUser";
 import { useRoom } from "@/lib/hooks/useRoom";
@@ -174,7 +174,7 @@ export default function RoomPage() {
                 onClick={() => setFullScreenCanvas(true)}
                 className="rounded-xl bg-white/5 px-3 py-2 text-xs font-bold uppercase text-ink active:scale-95"
               >
-                Canvas
+                Play RPS
               </button>
               {isHost && (
                 <button
@@ -299,7 +299,7 @@ export default function RoomPage() {
         )}
       </AnimatePresence>
 
-      {/* Full Screen Canvas Modal */}
+      {/* Full Screen RPS Modal */}
       <AnimatePresence>
         {fullScreenCanvas && (
           <motion.div
@@ -308,18 +308,8 @@ export default function RoomPage() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="fixed inset-0 z-50 flex flex-col bg-vice-night"
           >
-            <div className="absolute left-5 top-[max(1rem,env(safe-area-inset-top))] z-50">
-              <button
-                onClick={() => setFullScreenCanvas(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-6 w-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
             <div className="flex-1 overflow-hidden">
-              <LiveCanvas code={code} enabled={room.status === "waiting"} />
+              <RockPaperScissors code={code} uid={uid ?? ""} players={players} onClose={() => setFullScreenCanvas(false)} />
             </div>
           </motion.div>
         )}
