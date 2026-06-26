@@ -1,5 +1,5 @@
 import { GradientBackdrop } from "@/components/theme/GradientBackdrop";
-import { BottomNav } from "@/components/nav/BottomNav";
+import { TopBar } from "@/components/nav/TopBar";
 
 /**
  * Layout for authenticated app screens (home / leaderboard / profile).
@@ -14,8 +14,8 @@ export default function AppLayout({
     <>
       <GradientBackdrop />
       <div className="relative flex min-h-[100dvh] flex-col">
+        <TopBar title="Cousins Party" showRanks={true} />
         <div className="flex-1 overflow-y-auto">{children}</div>
-        <BottomNav />
       </div>
     </>
   );

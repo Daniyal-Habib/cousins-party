@@ -7,6 +7,7 @@ import { GradientBackdrop } from "@/components/theme/GradientBackdrop";
 import { GlassPanel } from "@/components/theme/GlassPanel";
 import { NeonButton } from "@/components/theme/NeonButton";
 import { Avatar } from "@/components/theme/Avatar";
+import { TopBar } from "@/components/nav/TopBar";
 import { RockPaperScissors } from "@/components/games/rps/RockPaperScissors";
 import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 import { useUser } from "@/lib/hooks/useUser";
@@ -163,26 +164,21 @@ export default function RoomPage() {
     <>
       <GradientBackdrop />
       <main className="mx-auto flex h-[100dvh] w-full max-w-md flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
-          <button
-            onClick={handleLeave}
-            disabled={leaving}
-            className="flex items-center gap-1 text-sm text-muted active:scale-95"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Leave
-          </button>
-          <button onClick={copyCode} className="flex flex-col items-center">
-            <span className="font-display text-[10px] uppercase tracking-[0.3em] text-muted">Room Code</span>
-            <span className="font-display text-2xl tracking-[0.4em] text-neon-pink neon-text">{code}</span>
-          </button>
-          <span className="w-12 text-right font-display text-xs text-neon-teal">
-            {copied ? "Copied!" : `${players.length}👥`}
-          </span>
-        </div>
+        <TopBar
+          title={
+            <button onClick={copyCode} className="active:scale-95 transition">
+              <span className="font-display text-lg uppercase tracking-widest text-ink neon-text-teal">Room {code}</span>
+            </button>
+          }
+          onLeave={handleLeave}
+          requireConfirm={true}
+          subtitle={
+            <div className="flex gap-2 text-[10px] uppercase tracking-widest text-muted">
+              <span>{players.length}👥</span>
+              {copied && <span className="text-neon-teal">Copied!</span>}
+            </div>
+          }
+        />
 
         {/* Game + waiting info */}
         <div className="px-5 pb-2">
