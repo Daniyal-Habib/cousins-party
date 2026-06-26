@@ -176,7 +176,7 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={cn(
-                    "glass relative flex flex-col gap-4 p-4 transition-all duration-300 rounded-3xl overflow-hidden",
+                    "glass relative flex flex-col gap-4 p-4 transition-all duration-300 rounded-3xl",
                     status === "challengedYou" && "ring-2 ring-neon-pink shadow-[0_0_15px_rgba(255,45,123,0.3)] bg-neon-pink/5",
                     status === "resolved" && delta > 0 && "ring-2 ring-neon-teal shadow-[0_0_15px_rgba(31,224,216,0.2)] bg-neon-teal/5",
                     status === "resolved" && delta < 0 && "ring-2 ring-neon-pink/50 bg-neon-pink/5"
