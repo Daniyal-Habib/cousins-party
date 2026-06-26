@@ -14,7 +14,7 @@ import { useRoom } from "@/lib/hooks/useRoom";
 import { kickPlayer, leaveRoom } from "@/lib/rooms/roomService";
 import { uploadProfilePhoto } from "@/lib/storage/uploadProfilePhoto";
 import { doc, updateDoc } from "firebase/firestore";
-import { ref, update } from "firebase/database";
+import { ref, update, onValue, off } from "firebase/database";
 import { db, rtdb } from "@/lib/firebase";
 import { rtdbKey } from "@/lib/rtdbKey";
 import type { GameType } from "@/lib/types";
@@ -41,6 +41,7 @@ export default function RoomPage() {
   const [showKick, setShowKick] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [pendingChallenges, setPendingChallenges] = useState(0);
 
   const isHost = Boolean(room?.hostUid && uid === room.hostUid);
   const canStart = Boolean(room && players.length >= 4);
@@ -104,6 +105,29 @@ export default function RoomPage() {
       return () => clearTimeout(timer);
     }
   }, [room?.status, room?.gameType, code, router]);
+
+  // Listen for pending RPS challenges
+  useEffect(() => {
+    if (!rtdb || !uid || !code) return;
+    const myK = rtdbKey(uid);
+    const matchesRef = ref(rtdb, `rps/${code}/matches`);
+    const unsub = onValue(matchesRef, (snap) => {
+      const matches = snap.val() || {};
+      let count = 0;
+      Object.entries(matches).forEach(([matchId, match]: [string, any]) => {
+        if (!matchId.includes(myK)) return;
+        const keys = matchId.split('_');
+        const isP1 = keys[0] === myK;
+        const myChoice = isP1 ? match.p1Choice : match.p2Choice;
+        const theirChoice = isP1 ? match.p2Choice : match.p1Choice;
+        if (!myChoice && theirChoice && !match.resolvedAt) {
+          count++;
+        }
+      });
+      setPendingChallenges(count);
+    });
+    return () => off(matchesRef, "value", unsub);
+  }, [code, uid]);
 
   if (exists === false) {
     return (
@@ -172,9 +196,14 @@ export default function RoomPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setFullScreenCanvas(true)}
-                className="rounded-xl bg-white/5 px-3 py-2 text-xs font-bold uppercase text-ink active:scale-95"
+                className="relative rounded-xl bg-white/5 px-3 py-2 text-xs font-bold uppercase text-ink active:scale-95 transition"
               >
                 Play RPS
+                {pendingChallenges > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-neon-pink text-[9px] font-bold text-white shadow-[0_0_10px_rgba(255,45,123,0.8)] animate-pulse">
+                    {pendingChallenges}
+                  </span>
+                )}
               </button>
               {isHost && (
                 <button
