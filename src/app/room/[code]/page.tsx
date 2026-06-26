@@ -114,7 +114,7 @@ export default function RoomPage() {
     const unsub = onValue(matchesRef, (snap) => {
       const matches = snap.val() || {};
       let count = 0;
-      Object.entries(matches).forEach(([matchId, match]: [string, any]) => {
+      Object.entries(matches).forEach(([matchId, match]: [string, { p1Choice?: string; p2Choice?: string; resolvedAt?: number }]) => {
         if (!matchId.includes(myK)) return;
         const keys = matchId.split('_');
         const isP1 = keys[0] === myK;
