@@ -21,16 +21,16 @@ const PHASE_LABEL: Record<string, { label: string; color: string }> = {
  * eliminated players.
  */
 export function GameStatusBar() {
-  const { state, me, spectator } = useMafia();
+  const { state, me, spectator, code } = useMafia();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const router = useRouter();
+
   if (!state || !me) return null;
   // Skip on full-bleed screens.
   if (state.phase === "reveal" || state.phase === "ended") return null;
 
   const phase = PHASE_LABEL[state.phase] ?? PHASE_LABEL.night;
   const livingCount = state.players.filter((p) => p.alive).length;
-
-  const [showConfirm, setShowConfirm] = useState(false);
-  const router = useRouter();
 
   function confirmLeave() {
     setShowConfirm(false);
