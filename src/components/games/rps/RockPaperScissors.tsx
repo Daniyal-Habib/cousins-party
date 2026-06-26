@@ -79,30 +79,35 @@ export function RockPaperScissors({ code, uid, players, onClose }: RPSProps) {
     const myField = isP1 ? "p1Choice" : "p2Choice";
     const theirField = isP1 ? "p2Choice" : "p1Choice";
 
-    runTransaction(ref(rtdb, `rps/${code}/matches/${matchId}`), (current) => {
-      const match = current || { p1Choice: null, p2Choice: null, resolvedAt: null };
-      if (match[myField] || match.resolvedAt) {
-        return undefined; // Abort if I already picked or match resolved
-      }
-      match[myField] = weapon;
-      if (match[theirField]) {
-        match.resolvedAt = Date.now();
-      }
-      return match;
-    }, (error, committed, snapshot) => {
-      if (error || !committed || !snapshot) return;
-      const match = snapshot.val();
-      if (match.resolvedAt) {
-        // Both picked! Safely update scores exactly once.
-        const myChoice = match[myField];
-        const theirChoice = match[theirField];
-        const delta = getScoreDelta(myChoice, theirChoice);
-        if (delta !== 0) {
-          runTransaction(ref(rtdb, `rps/${code}/scores/${myK}`), (score) => (score || 0) + delta);
-          runTransaction(ref(rtdb, `rps/${code}/scores/${theirK}`), (score) => (score || 0) - delta);
+    try {
+      const result = await runTransaction(ref(rtdb, `rps/${code}/matches/${matchId}`), (current) => {
+        const match = current || { p1Choice: null, p2Choice: null, resolvedAt: null };
+        if (match[myField] || match.resolvedAt) {
+          return undefined; // Abort if I already picked or match resolved
+        }
+        match[myField] = weapon;
+        if (match[theirField]) {
+          match.resolvedAt = Date.now();
+        }
+        return match;
+      });
+
+      if (result.committed && result.snapshot) {
+        const match = result.snapshot.val();
+        if (match.resolvedAt) {
+          // Both picked! Safely update scores exactly once.
+          const myChoice = match[myField];
+          const theirChoice = match[theirField];
+          const delta = getScoreDelta(myChoice, theirChoice);
+          if (delta !== 0) {
+            runTransaction(ref(rtdb, `rps/${code}/scores/${myK}`), (score) => (score || 0) + delta);
+            runTransaction(ref(rtdb, `rps/${code}/scores/${theirK}`), (score) => (score || 0) - delta);
+          }
         }
       }
-    });
+    } catch (e) {
+      console.error("RPS match transaction failed", e);
+    }
   }
 
   async function clearMatch(theirUid: string) {
