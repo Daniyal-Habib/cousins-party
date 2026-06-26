@@ -112,9 +112,9 @@ export default function RoomPage() {
     const myK = rtdbKey(uid);
     const matchesRef = ref(rtdb, `rps/${code}/matches`);
     const unsub = onValue(matchesRef, (snap) => {
-      const matches = snap.val() || {};
+      const matches: Record<string, { p1Choice?: string; p2Choice?: string; resolvedAt?: number }> = snap.val() || {};
       let count = 0;
-      Object.entries(matches).forEach(([matchId, match]: [string, { p1Choice?: string; p2Choice?: string; resolvedAt?: number }]) => {
+      Object.entries(matches).forEach(([matchId, match]) => {
         if (!matchId.includes(myK)) return;
         const keys = matchId.split('_');
         const isP1 = keys[0] === myK;
