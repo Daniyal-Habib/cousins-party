@@ -21,7 +21,7 @@ const PHASE_LABEL: Record<string, { label: string; color: string }> = {
  * eliminated players.
  */
 export function GameStatusBar() {
-  const { state, me, spectator, code } = useMafia();
+  const { state, me, spectator } = useMafia();
   const [showConfirm, setShowConfirm] = useState(false);
   const router = useRouter();
 
