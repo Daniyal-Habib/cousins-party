@@ -34,7 +34,7 @@ export function GameStatusBar() {
 
   function confirmLeave() {
     setShowConfirm(false);
-    router.replace(`/room/${code}`); // or /home
+    router.replace("/home");
   }
 
   return (
