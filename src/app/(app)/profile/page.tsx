@@ -80,7 +80,6 @@ export default function ProfilePage() {
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="user"
           className="hidden"
           onChange={handlePhoto}
         />

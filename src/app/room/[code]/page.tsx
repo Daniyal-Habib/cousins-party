@@ -516,7 +516,7 @@ function EditProfileModal({
               </svg>
             </span>
           </button>
-          <input ref={fileRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhoto} />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
           {busy && <p className="mt-2 text-xs text-neon-teal">Processing…</p>}
           {msg && !busy && <p className="mt-2 text-xs text-neon-teal">{msg}</p>}
         </div>
